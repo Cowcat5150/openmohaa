@@ -391,7 +391,7 @@ void UIFAKKServerList::ConnectServer(Event *ev)
     pItem = static_cast<const FAKKServerListItem *>(GetItem(getCurrentItem()));
     if (pItem->IsDifferentVersion()) {
         const char *message;
-        float       neededVersion = com_target_version->value;
+        float       neededVersion = com_target_shortversion->value;
         float       serverVersion = atof(pItem->GetListItemVersion().c_str());
 
         // Tolerate patch version
@@ -401,7 +401,7 @@ void UIFAKKServerList::ConnectServer(Event *ev)
             message =
                 va("Server is version %s, you are targeting %s",
                    pItem->GetListItemVersion().c_str(),
-                   com_target_version->string);
+                   com_target_shortversion->string);
             Cvar_Set("com_errormessage", message);
 
             UI_PushMenu("wrongversion");
@@ -409,7 +409,7 @@ void UIFAKKServerList::ConnectServer(Event *ev)
             message =
                 va("Can not connect to v%s server, you are targeting v%s",
                    pItem->GetListItemVersion().c_str(),
-                   com_target_version->string);
+                   com_target_shortversion->string);
 
             Cvar_Set("dm_serverstatus", message);
         }
@@ -753,7 +753,7 @@ void UIFAKKServerList::NewServerList(void)
         m_ServerListInst[0].serverList  = this;
 
         // As there are 2 server lists it's better to balance the number of parallel requests
-        iNumConcurrent /= 2;
+        iNumConcurrent = iNumConcurrent * 4 / 5;
 
         m_serverList[0] = ServerListNew(
             game_name,
@@ -1140,7 +1140,7 @@ void UIFAKKServerList::UpdateServerListCallBack(
                 }
             }
         } else {
-            if (fabs(fGameVer - com_target_version->value) > 0.1f) {
+            if (fabs(fGameVer - com_target_shortversion->value) > 0.1f) {
                 bDiffVersion = true;
             }
         }
