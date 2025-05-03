@@ -111,9 +111,11 @@ void GLimp_Minimize( void )
 GLimp_LogComment
 ===============
 */
+/*
 void GLimp_LogComment( char *comment )
 {
 }
+*/
 
 /*
 ===============
