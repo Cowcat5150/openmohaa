@@ -93,8 +93,7 @@ typedef int SOCKET;
 
 #define closesocket	CloseSocket
 #define ioctlsocket	IoctlSocket
-//#define socketError	Errno()
-#define socketError			errno // watch out Cowcat
+#define socketError	Errno()
 
 typedef int socklen_t; // test long Cowcat
 typedef int ioctlarg_t; // test long Cowcat
@@ -879,7 +878,7 @@ void Sys_SendPacket( int length, const void *data, netadr_t to ) {
 		)
 		return;
 
-    #if 0 // disable ? Cowcat
+    #if 0
 	if(to.type == NA_MULTICAST6 && (net_enabled->integer & NET_DISABLEMCAST))
 		return;
 	#endif
@@ -888,7 +887,6 @@ void Sys_SendPacket( int length, const void *data, netadr_t to ) {
 	NetadrToSockadr( &to, (struct sockaddr *) &addr );
 
 	if( usingSocks && to.type == NA_IP ) {
-	     //Com_Printf( "Sys_SendPacket: usingsocks\n"); // Cowcat
 		socksBuf[0] = 0;	// reserved
 		socksBuf[1] = 0;
 		socksBuf[2] = 0;	// fragment (not fragmented)
@@ -899,10 +897,8 @@ void Sys_SendPacket( int length, const void *data, netadr_t to ) {
 		ret = sendto( ip_socket, socksBuf, length+10, 0, &socksRelayAddr, sizeof(socksRelayAddr) );
 	}
 	else {
-	    //Com_Printf( "Sys_SendPacket: not usingsocks\n"); // Cowcat
-		if(addr.ss_family == AF_INET) // needed ? Cowcat
+		//if(addr.ss_family == AF_INET) // without this, online works - Cowcat
 		{
-		    //Com_Printf( "Sys_SendPacket: not usingsocks AF_INET\n"); // Cowcat
 			ret = sendto( ip_socket, data, length, 0, (struct sockaddr *) &addr, sizeof(struct sockaddr_in) );
 		}
 		//else if(addr.ss_family == AF_INET6)
@@ -910,23 +906,19 @@ void Sys_SendPacket( int length, const void *data, netadr_t to ) {
 	}
 	
 	if( ret == SOCKET_ERROR ) {
-	    Com_Printf( "Sys_SendPacket: ret SOCKET_ERROR\n"); // Cowcat
 		int err = socketError;
 
 		// wouldblock is silent
 		if( err == EAGAIN ) {
-		    Com_Printf( "Sys_SendPacket: ret SOCKET_ERROR EAGAIN\n"); // Cowcat
 			return;
 		}
 
 		// some PPP links do not allow broadcasts and return an error
 		if( ( err == EADDRNOTAVAIL ) && ( ( to.type == NA_BROADCAST ) ) ) {
-		    Com_Printf( "Sys_SendPacket: ret SOCKET_ERROR notavail-broadcast\n"); // Cowcat
 			return;
 		}
 
 		Com_Printf( "Sys_SendPacket: %s\n", NET_ErrorString() );
-		Com_Printf( "Sys_SendPacket: ret SOCKET_ERROR end\n"); // Cowcat
 	}
 }
 
@@ -1530,7 +1522,7 @@ static void NET_AddLocalAddress(char *ifname, struct sockaddr *addr, struct sock
 	}
 }
 
-#if defined(__linux__) || defined(__APPLE__) || defined(__BSD__) && defined(__MORPHOS__)
+#if defined(__linux__) || defined(__APPLE__) || defined(__BSD__)
 static void NET_GetLocalAddress(void)
 {
 	struct ifaddrs *ifap, *search;
