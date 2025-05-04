@@ -5504,7 +5504,12 @@ void UI_BeginLoadResource(void)
 {
     clock_t time = clock();
 
+    #if !defined(__MORPHOS__)
     startCountHigh = time >> 32;
+    #else
+    startCountHigh = (uint64_t)time >> 32; // test Cowcat
+    #endif
+    
     startCountLow  = time;
 }
 
@@ -5517,11 +5522,23 @@ void UI_EndLoadResource(void)
 {
     clock_t time;
 
+    #if !defined(__MORPHOS__)
+    
     time = clock() - (((clock_t)startCountHigh << 32) | startCountLow) + (((clock_t)loadCountHigh << 32) | loadCountLow);
 
     loadCountHigh = time >> 32;
     loadCountLow  = time;
     loadCount     = time >> 25;
+    
+    #else // test Cowcat
+    
+    time = clock() - (((uint64_t)(clock_t)startCountHigh << 32) | startCountLow) + (((uint64_t)(clock_t)loadCountHigh << 32) | loadCountLow);
+
+    loadCountHigh = (uint64_t)time >> 32;
+    loadCountLow  = time;
+    loadCount     = time >> 25;
+    
+    #endif
 }
 
 /*
