@@ -42,6 +42,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <sys/wait.h>
 #include <time.h>
 
+#include <proto/exec.h>
+struct Library *SocketBase;
+
 qboolean stdinIsATTY;
 
 // Used to determine where to store user-specific files
@@ -908,6 +911,8 @@ void Sys_PlatformInit( void )
 
 	stdinIsATTY = isatty( STDIN_FILENO ) &&
 		!( term && ( !strcmp( term, "raw" ) || !strcmp( term, "dumb" ) ) );
+	
+	SocketBase = OpenLibrary("bsdsocket.library", 0);
 }
 
 /*
@@ -919,6 +924,11 @@ Unix specific deinitialisation
 */
 void Sys_PlatformExit( void )
 {
+    if (SocketBase)
+    {
+        CloseLibrary(SocketBase);
+        SocketBase = NULL;
+    }
 }
 
 /*
