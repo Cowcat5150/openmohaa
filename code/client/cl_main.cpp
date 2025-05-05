@@ -1126,6 +1126,8 @@ in anyway.
 ===================
 */
 void CL_RequestAuthorization( void ) {
+    // MOHAA doesn't support this
+#if 0
 	char	nums[64];
 	int		i, j;
 	size_t	l;
@@ -1168,6 +1170,7 @@ void CL_RequestAuthorization( void ) {
 	fs = Cvar_Get ("cl_anonymous", "0", CVAR_INIT|CVAR_SYSTEMINFO );
 
 	CL_NET_OutOfBandPrint(cls.authorizeServer, "getKeyAuthorize %i %s", fs->integer, nums );
+#endif
 }
 
 /*
@@ -2009,11 +2012,10 @@ void CL_CheckForResend( void ) {
 
 	switch ( clc.state ) {
 	case CA_CONNECTING:
-		// requesting a challenge
-		//wombat: not authorization in mohaa
-//		if ( !Sys_IsLANAddress( clc.serverAddress ) ) {
-//			CL_RequestAuthorization();
-//		}
+#ifndef STANDALONE
+		if (!com_standalone->integer && clc.serverAddress.type == NA_IP && !Sys_IsLANAddress( clc.serverAddress ) )
+			CL_RequestAuthorization();
+#endif
 		CL_NET_OutOfBandPrint(clc.serverAddress, "getchallenge");
 		break;
 	case CA_AUTHORIZING:
@@ -2028,7 +2030,13 @@ wombat: sending conect here: an example connect string from MOHAA looks like thi
 */
 
 		// sending back the challenge
-		port = Cvar_VariableValue ("net_qport");
+		port = Cvar_VariableIntegerValue ("net_qport");
+
+        // sanitize the name before sending it
+	    char szSanitizedName[MAX_NAME_LENGTH];
+		if (Com_SanitizeName(name->string, szSanitizedName, sizeof(szSanitizedName))) {
+			Cvar_Set("name", szSanitizedName);
+		}
 
 		Q_strncpyz( info, Cvar_InfoString( CVAR_USERINFO ), sizeof( info ) );
 		
@@ -2041,7 +2049,7 @@ wombat: sending conect here: an example connect string from MOHAA looks like thi
 		else
 #endif
 			Info_SetValueForKey(info, "protocol", va("%i", com_protocol->integer));
-		Info_SetValueForKey( info, "qport", va("%i", port ) );
+		Info_SetValueForKey(info, "qport", va("%i", port));
 		Info_SetValueForKey(info, "challenge", va("%i", clc.challenge));
 		Info_SetValueForKey(info, "version", com_target_shortversion->string);
 		if (com_target_game->integer == target_game_e::TG_MOHTT) {
