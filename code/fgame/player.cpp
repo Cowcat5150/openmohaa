@@ -10608,6 +10608,8 @@ void Player::PlayInstantMessageSound(const char *name)
 
 void Player::EventDMMessage(Event *ev)
 {
+    static constexpr unsigned int MAX_SAY_TEXT = 200;
+
     int i;
     //int              iStringLength;
     int              iMode = 0;
@@ -10818,7 +10820,6 @@ void Player::EventDMMessage(Event *ev)
         bool met_comment = false;
 
         Q_strcat(szPrintString, sizeof(szPrintString), ":");
-        iStringLength = strlen(szPrintString);
 
         // Added in OPM.
         //  Checks for comments in string (as COM_Parse will parse them)
@@ -10834,10 +10835,6 @@ void Player::EventDMMessage(Event *ev)
             //  So players can easily tell their position, health, etc.
             sToken = TranslateBattleLanguageTokens(sToken);
 
-            if (iStringLength + sToken.length() > (ARRAY_LEN(szPrintString) - 1)) {
-                break;
-            }
-
             if (met_comment && strstr(sToken, "*/")) {
                 // ignore messages containing comments
                 return;
@@ -10845,6 +10842,11 @@ void Player::EventDMMessage(Event *ev)
 
             Q_strcat(szPrintString, sizeof(szPrintString), " ");
             Q_strcat(szPrintString, sizeof(szPrintString), gi.LV_ConvertString(sToken));
+
+            iStringLength = strlen(szPrintString);
+            if (iStringLength + sToken.length() > (ARRAY_LEN(szPrintString) - 1)) {
+                break;
+            }
         }
     }
 
