@@ -1,7 +1,7 @@
 #cmake .. -DCMAKE_TOOLCHAIN_FILE=../morphos/morphos.cmake -DNO_MODERN_DMA=1
-#ppc-morphos-strip openmohaa.ppc
-#ppc-morphos-strip code/client/cgame/cgame.ppc.so
-#ppc-morphos-strip code/server/fgame/game.ppc.so
+#ppc-morphos-strip openmohaa
+#ppc-morphos-strip code/client/cgame/cgame.so
+#ppc-morphos-strip code/server/fgame/game.so
 
 set(TOOLCHAIN_OS MorphOS)
 set(TOOLCHAIN_SYSTEM_INFO_FILE Platform/${TOOLCHAIN_OS})
