@@ -19,6 +19,7 @@
   3. This notice may not be removed or altered from any source distribution.
 
 */
+#ifdef USE_MUMBLE
 
 #ifdef WIN32
 #include <windows.h>
@@ -186,3 +187,5 @@ int mumble_islinked(void)
 {
 	return lm != NULL;
 }
+
+#endif

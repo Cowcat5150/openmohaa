@@ -628,6 +628,7 @@ Add more tests as functionality is changed.  Tests should include
 any possible bounds violation and NULL data tests.
 =================
 */
+/*
 void TestStringClass(void)
 {
     char ch;        // ch == ?
@@ -735,7 +736,7 @@ void TestStringClass(void)
 
     a[1] = '1'; // a.data = "t1st", b.data = "test"
 }
-
+*/
 #ifdef _WIN32
 #    pragma warning(default : 4189) // local variable is initialized but not referenced
 #    pragma warning(disable : 4514) // unreferenced inline function has been removed

@@ -669,9 +669,6 @@ void *Sys_LoadGameDll(const char *name, vmMainProc *entryPoint, intptr_t (*syste
 }
 
 int putenv( const char *varname ) {return 0;}
-void shm_open() {};
-void mmap() {};
-void munmap() {};
 
 /*
 =================
