@@ -80,6 +80,10 @@ inline void operator delete(void*, const rcNewTag&, void*) {}
 /// Signed to avoid warnnings when comparing to int loop indexes, and common error with comparing to zero.
 /// MSVC2010 has a bug where ssize_t is unsigned (!!!).
 typedef intptr_t rcSizeType;
+#if defined(__MORPHOS__)
+#define INT32_MAX 2147483647
+#define INTPTR_MAX INT32_MAX
+#endif
 #define RC_SIZE_MAX INTPTR_MAX
 
 /// Macros to hint to the compiler about the likeliest branch. Please add a benchmark that demonstrates a performance
