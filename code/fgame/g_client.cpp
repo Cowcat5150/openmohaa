@@ -817,6 +817,9 @@ void G_ClientUserinfoChanged(gentity_t *ent, const char *u)
         ent->entity->ProcessEvent(ev);
     }
 
+    Q_strncpyz(client->pers.ip, Info_ValueForKey(u, "ip"), sizeof(client->pers.ip));
+    client->pers.port = atoi(Info_ValueForKey(u, "port"));
+
     Q_strncpyz(client->pers.userinfo, u, sizeof(client->pers.userinfo));
 }
 
@@ -887,6 +890,7 @@ const char *G_ClientConnect(int clientNum, qboolean firstTime, qboolean differen
 
     gi.GetUserinfo(clientNum, userinfo, sizeof(userinfo));
 
+#if 0
     // IP filtering
     // https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=500
     // recommanding PB based IP / GUID banning, the builtin system is pretty limited
@@ -894,15 +898,16 @@ const char *G_ClientConnect(int clientNum, qboolean firstTime, qboolean differen
     ip   = Info_ValueForKey(userinfo, "ip");
     port = Info_ValueForKey(userinfo, "port");
 
-    // FIXME: what is fucking wrong with G_FilterPacket...
     // NOTE: IP banning is directly handled by the server
-    //if ( G_FilterPacket( value ) ) {
-    //	return "Banned IP";
-    //}
+    if ( G_FilterPacket( value ) ) {
+    	return "Banned IP";
+    }
+#endif
 
     // we don't check password for bots and local client
     // NOTE: local client <-> "ip" "localhost"
     //   this means this client is not running in our current process
+    ip = Info_ValueForKey(userinfo, "ip");
     if ((strcmp(ip, "localhost") != 0)) {
         // check for a password
         value = Info_ValueForKey(userinfo, "password");
@@ -936,9 +941,6 @@ const char *G_ClientConnect(int clientNum, qboolean firstTime, qboolean differen
         }
     }
 
-    Q_strncpyz(client->pers.ip, ip, sizeof(client->pers.ip));
-    client->pers.port = atoi(port);
-
     G_ClientUserinfoChanged(ent, userinfo);
 
 #if 0
@@ -954,9 +956,7 @@ const char *G_ClientConnect(int clientNum, qboolean firstTime, qboolean differen
 
     // don't do the "xxx connected" messages if they were caried over from previous level
     if (firstTime && g_gametype->integer != GT_SINGLE_PLAYER) {
-        if (dedicated->integer) {
-            gi.Printf("%s is preparing for deployment\n", client->pers.netname);
-        }
+        G_PrintfClient(ent, "is preparing for deployment\n");
 
         G_PrintToAllClients(va("%s is preparing for deployment\n", client->pers.netname), 2);
     }
@@ -974,6 +974,8 @@ and on transition between teams, but doesn't happen on respawns
 */
 void G_ClientBegin(gentity_t *ent, usercmd_t *cmd)
 {
+    Player *player = NULL;
+
     try {
         assert(ent->s.number < game.maxclients);
         assert(ent->client != NULL);
@@ -985,11 +987,21 @@ void G_ClientBegin(gentity_t *ent, usercmd_t *cmd)
             // state when the game is saved, so we need to compensate
             // with deltaangles
             ent->entity->SetDeltaAngles();
+
+            if (ent->entity->IsSubclassOfPlayer()) {
+                player = static_cast<Player *>(ent->entity);
+
+                // Added in OPM
+                //  When a client reuses an entity, make the player instance aware about it
+                if (player) {
+                    player->ResetClient();
+                }
+            }
         } else {
             // a spawn point will completely reinitialize the entity
             level.spawn_entnum = ent->s.number;
 
-            Player *player = new Player;
+            player = new Player;
         }
 
         if (level.intermissiontime && ent->entity) {
@@ -999,9 +1011,7 @@ void G_ClientBegin(gentity_t *ent, usercmd_t *cmd)
 
             if (g_gametype->integer != GT_SINGLE_PLAYER) {
                 // send effect if in a multiplayer game
-                if (dedicated->integer) {
-                    gi.Printf("%s has entered the battle\n", ent->client->pers.netname);
-                }
+                G_PrintfClient(ent, "has entered the battle\n");
 
                 G_PrintToAllClients(va("%s has entered the battle\n", ent->client->pers.netname), 2);
             }
@@ -1062,6 +1072,8 @@ void G_ClientDisconnect(gentity_t *ent)
             return;
         }
 
+        G_PrintfClient(ent, "has left the battle\n");
+    
         G_PrintToAllClients(va("%s has left the battle\n", ent->client->pers.netname), 2);
 
         assert(ent->entity->IsSubclassOfPlayer());
@@ -1135,4 +1147,36 @@ void G_ClientDisconnect(gentity_t *ent)
 		BotAIShutdownClient( ent->client->ps.clientNum, qfalse );
 	}
 #endif
+}
+
+/*
+===========
+G_PrintfClient
+
+Logs message with client context.
+For bots it falls back to regular print.
+============
+*/
+void G_PrintfClient(gentity_t *ent, const char *fmt, ...) {
+    va_list     argptr;
+    char        msg[MAXPRINTMSG];
+
+    if (!dedicated->integer) {
+        return;
+    }
+
+    if (!ent->client) {
+        return;
+    }
+
+    va_start(argptr, fmt);
+    Q_vsnprintf(msg, sizeof(msg), fmt, argptr);
+    va_end(argptr);
+
+    if (ent->r.svFlags & SVF_BOT) {
+        gi.Printf("%s %s", ent->client->pers.netname, msg);
+        return;
+    }
+
+    gi.PrintfClient(ent - g_entities, "%s", msg);
 }
