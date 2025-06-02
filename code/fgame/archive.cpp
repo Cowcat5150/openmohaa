@@ -109,11 +109,12 @@ const char *ArchiveFile::Filename(void)
 
 qboolean ArchiveFile::Compress()
 {
+/*
 #ifdef Q3_BIG_ENDIAN
     // FIXME: Decompressing crashes on big-endian architectures
     return false;
 #endif
-
+*/
     byte  *tempbuf;
     size_t out_len;
     size_t tempbuf_len;
@@ -213,7 +214,12 @@ qboolean ArchiveFile::OpenRead(const char *name)
 
         new_len = 0;
         Read(&new_len, sizeof(uint32_t));
+        
+        #ifdef Q3_BIG_ENDIAN
+        if (strstr(filename, ".pth"))
+        #endif
         new_len = LittleLong(new_len);
+        
         tempbuf = (byte *)gi.Malloc(new_len);
 
         if (g_lz77.Decompress(pos, length - 8, tempbuf, &iCSVGLength) || iCSVGLength != new_len) {
