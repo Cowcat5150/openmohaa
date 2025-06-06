@@ -531,7 +531,7 @@ check_filecase
 static int check_filecase( char *Path ) {
     int retval;
 
-#ifdef _WIN32
+#if defined(_WIN32) || defined (__MORPHOS__)
     retval = 0;
 #else
 	char *ptr;
