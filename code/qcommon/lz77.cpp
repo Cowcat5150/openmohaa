@@ -774,6 +774,7 @@ LABEL_5:
 	return -1;
 }
 
+/*
 static unsigned char in[ 0x40000 ];
 static unsigned char out[ 0x41013 ];
 
@@ -812,3 +813,4 @@ void test_compression()
 
 	printf( "Decompression got FuBar'd... %i != %zi\n", 0x40000, new_len );
 }
+*/
