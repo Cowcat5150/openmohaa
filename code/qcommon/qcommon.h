@@ -1224,11 +1224,11 @@ void CL_GetMouseState( int *x, int *y, unsigned int *buttons );
 
 void CL_SetMousePos( int x, int y );
 
-void CL_MouseEvent( int dx, int dy, int time );
+void CL_MouseEvent( int dx, int dy /*, int time */);
 
 void CL_ClearButtons( void );
 
-void CL_JoystickEvent( int axis, int value, int time );
+void CL_JoystickEvent( int axis, int value /*, int time */);
 
 void CL_PacketEvent( netadr_t from, msg_t *msg );
 
