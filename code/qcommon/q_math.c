@@ -611,6 +611,7 @@ RotatePointAroundVector
 This is not implemented very well...
 ===============
 */
+#if 0
 void RotatePointAroundVector( vec3_t dst, const vec3_t dir, const vec3_t point,
 							 float degrees ) {
 	float	m[3][3];
@@ -666,7 +667,34 @@ void RotatePointAroundVector( vec3_t dst, const vec3_t dir, const vec3_t point,
 		dst[i] = rot[i][0] * point[0] + rot[i][1] * point[1] + rot[i][2] * point[2];
 	}
 }
+#else
+void RotatePointAroundVector( vec3_t dst, const vec3_t dir, const vec3_t point, float degrees )
+{
+	float	m[3][3];
+	float	c, s, t;
 
+	degrees = -DEG2RAD( degrees );
+	s = sin (degrees);
+	c = cos (degrees);
+	t = 1 - c;
+
+	m[0][0] = t * dir[0] * dir[0] + c;
+	m[0][1] = t * dir[0] * dir[1] + s * dir[2];
+	m[0][2] = t * dir[0] * dir[2] - s * dir[1];
+
+	m[1][0] = t * dir[0] * dir[1] - s * dir[2];
+	m[1][1] = t * dir[1] * dir[1] + c;
+	m[1][2] = t * dir[1] * dir[2] + s * dir[0];
+
+	m[2][0] = t * dir[0] * dir[2] + s * dir[1];
+	m[2][1] = t * dir[1] * dir[2] - s * dir[0];
+	m[2][2] = t * dir[2] * dir[2] + c;
+
+	dst[0] = DotProduct( point, m[0] );
+	dst[1] = DotProduct( point, m[1] );
+	dst[2] = DotProduct( point, m[2] );
+}
+#endif
 /*
 ===============
 RotateAroundDirection
