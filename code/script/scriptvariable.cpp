@@ -2001,13 +2001,13 @@ bool ScriptVariable::operator==(const ScriptVariable& value)
         return m_data.intValue == value.m_data.intValue;
 
     case VARIABLE_INTEGER + VARIABLE_FLOAT *VARIABLE_MAX: // ( int ) == ( float )
-        return fabs(m_data.intValue - value.m_data.floatValue) < 0.0001f;
+        return fabs(m_data.intValue - value.m_data.floatValue) < 0.0001;
 
     case VARIABLE_FLOAT + VARIABLE_FLOAT *VARIABLE_MAX: // ( float ) == ( float )
-        return fabs(m_data.floatValue - value.m_data.floatValue) < 0.0001f;
+        return fabs(m_data.floatValue - value.m_data.floatValue) < 0.0001;
 
     case VARIABLE_FLOAT + VARIABLE_INTEGER *VARIABLE_MAX: // ( float ) == ( int )
-        return fabs(m_data.floatValue - value.m_data.intValue) < 0.0001f;
+        return fabs(m_data.floatValue - value.m_data.intValue) < 0.0001;
 
     case VARIABLE_CONSTSTRING
         + VARIABLE_CONSTSTRING *VARIABLE_MAX: // ( const string )		==		( const string )
@@ -2059,7 +2059,7 @@ bool ScriptVariable::operator==(const ScriptVariable& value)
         return m_data.charValue == value.m_data.charValue;
 
     case VARIABLE_VECTOR + VARIABLE_VECTOR *VARIABLE_MAX: // ( vector ) == ( vector )
-        return VectorCompareEpsilon(m_data.vectorValue, value.m_data.vectorValue, 0.0001f) ? true : false;
+        return VectorCompareEpsilon(m_data.vectorValue, value.m_data.vectorValue, 0.0001) ? true : false;
     }
 }
 
@@ -2263,10 +2263,7 @@ void ScriptVariable::complement(void)
     if (type == VARIABLE_INTEGER) {
         m_data.intValue = ~m_data.intValue;
     } else {
-        float value = floatValue();
-        int   i     = ~*(int *)&value; // ley0k: evil floating point hack
-
-        setFloatValue(*(float *)&i);
+        setIntValue(~intValue());
     }
 }
 
@@ -2291,17 +2288,17 @@ void ScriptVariable::greaterthan(ScriptVariable& variable)
         break;
 
     case VARIABLE_INTEGER + VARIABLE_FLOAT *VARIABLE_MAX: // ( int ) > ( float )
-        m_data.intValue = m_data.intValue > variable.m_data.floatValue;
+        m_data.intValue = m_data.intValue - variable.m_data.floatValue >= 0.0001;
         break;
 
     case VARIABLE_FLOAT + VARIABLE_FLOAT *VARIABLE_MAX: // ( float ) > ( float )
         type            = VARIABLE_INTEGER;
-        m_data.intValue = m_data.floatValue > variable.m_data.floatValue;
+        m_data.intValue = m_data.floatValue - variable.m_data.floatValue >= 0.0001;
         break;
 
     case VARIABLE_FLOAT + VARIABLE_INTEGER *VARIABLE_MAX: // ( float ) > ( int )
         type            = VARIABLE_INTEGER;
-        m_data.intValue = m_data.floatValue > variable.m_data.intValue;
+        m_data.intValue = m_data.floatValue - variable.m_data.intValue >= 0.0001;
         break;
 
     case VARIABLE_CHAR + VARIABLE_CHAR *VARIABLE_MAX: // ( char ) > ( char )
@@ -2332,17 +2329,17 @@ void ScriptVariable::greaterthanorequal(ScriptVariable& variable)
         break;
 
     case VARIABLE_INTEGER + VARIABLE_FLOAT *VARIABLE_MAX: // ( int ) >= ( float )
-        m_data.intValue = m_data.intValue >= variable.m_data.floatValue;
+        m_data.intValue = m_data.intValue - variable.m_data.floatValue > -0.0001;
         break;
 
     case VARIABLE_FLOAT + VARIABLE_FLOAT *VARIABLE_MAX: // ( float ) >= ( float )
         type            = VARIABLE_INTEGER;
-        m_data.intValue = m_data.floatValue >= variable.m_data.floatValue;
+        m_data.intValue = m_data.floatValue - variable.m_data.floatValue > -0.0001;
         break;
 
     case VARIABLE_FLOAT + VARIABLE_INTEGER *VARIABLE_MAX: // ( float ) >= ( int )
         type            = VARIABLE_INTEGER;
-        m_data.intValue = m_data.floatValue >= variable.m_data.intValue;
+        m_data.intValue = m_data.floatValue - variable.m_data.intValue > -0.0001;
         break;
 
     case VARIABLE_CHAR + VARIABLE_CHAR *VARIABLE_MAX: // ( char ) >= ( char )
@@ -2373,17 +2370,17 @@ void ScriptVariable::lessthan(ScriptVariable& variable)
         break;
 
     case VARIABLE_INTEGER + VARIABLE_FLOAT *VARIABLE_MAX: // ( int ) < ( float )
-        m_data.intValue = m_data.intValue < variable.m_data.floatValue;
+        m_data.intValue = m_data.intValue - variable.m_data.floatValue <= -0.0001;
         break;
 
     case VARIABLE_FLOAT + VARIABLE_FLOAT *VARIABLE_MAX: // ( float ) < ( float )
         type            = VARIABLE_INTEGER;
-        m_data.intValue = m_data.floatValue < variable.m_data.floatValue;
+        m_data.intValue = m_data.floatValue - variable.m_data.floatValue <= -0.0001;
         break;
 
     case VARIABLE_FLOAT + VARIABLE_INTEGER *VARIABLE_MAX: // ( float ) < ( int )
         type            = VARIABLE_INTEGER;
-        m_data.intValue = m_data.floatValue < variable.m_data.intValue;
+        m_data.intValue = m_data.floatValue - variable.m_data.intValue <= -0.0001;
         break;
 
     case VARIABLE_CHAR + VARIABLE_CHAR *VARIABLE_MAX: // ( char ) < ( char )
@@ -2414,17 +2411,17 @@ void ScriptVariable::lessthanorequal(ScriptVariable& variable)
         break;
 
     case VARIABLE_INTEGER + VARIABLE_FLOAT *VARIABLE_MAX: // ( int ) <= ( float )
-        m_data.intValue = m_data.intValue <= variable.m_data.floatValue;
+        m_data.intValue = m_data.intValue - variable.m_data.floatValue < 0.0001;
         break;
 
     case VARIABLE_FLOAT + VARIABLE_FLOAT *VARIABLE_MAX: // ( float ) <= ( float )
         type            = VARIABLE_INTEGER;
-        m_data.intValue = m_data.floatValue <= variable.m_data.floatValue;
+        m_data.intValue = m_data.floatValue - variable.m_data.floatValue < 0.0001;
         break;
 
     case VARIABLE_FLOAT + VARIABLE_INTEGER *VARIABLE_MAX: // ( float ) <= ( int )
         type            = VARIABLE_INTEGER;
-        m_data.intValue = m_data.floatValue <= variable.m_data.intValue;
+        m_data.intValue = m_data.floatValue - variable.m_data.intValue < 0.0001;
         break;
 
     case VARIABLE_CHAR + VARIABLE_CHAR *VARIABLE_MAX: // ( char ) <= ( char )
@@ -2630,6 +2627,10 @@ ScriptVariable *ScriptVariableList::SetVariable(unsigned int name, ScriptVariabl
     return variable;
 }
 
+int ScriptVariableList::size() const {
+    return list.size();
+}
+
 void ScriptVariableList::Archive(Archiver& arc)
 {
     Class::Archive(arc);
@@ -2643,6 +2644,16 @@ void ScriptVariableList::MakePrimitive()
     for (con_set_enum<short3, ScriptVariable>::Entry *entry = en.NextElement(); entry; entry = en.NextElement()) {
         entry->value.MakePrimitive();
     }
+}
+
+void ScriptVariableList::Print (void (*PrintFn) (const char* format, ...)) {
+    con_set_enum<short3, ScriptVariable> en = list;
+
+    for (con_set_enum<short3, ScriptVariable>::Entry *entry = en.NextElement(); entry; entry = en.NextElement()) {
+        (*PrintFn)("%s = %s\n", entry->value.getName().c_str(), entry->value.stringValue().c_str());
+    }
+
+    gi.Printf("%d variables\n", list.size());
 }
 
 CLASS_DECLARATION(Class, ScriptVariableList, NULL) {

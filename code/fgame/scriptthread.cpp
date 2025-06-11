@@ -2072,6 +2072,51 @@ Event EV_ScriptThread_IsBot
     "Returns 1 if the client is a bot, 0 otherwise. Will return 0 if the entity is not a client.",
     EV_RETURN
 );
+Event EV_ScriptThread_FS_ReadContent
+(
+    "fs_read_content",
+    EV_DEFAULT,
+    "s",
+    "fileName",
+    "Reads and returns the whole file content.",
+    EV_RETURN
+);
+Event EV_ScriptThread_FS_WriteContent
+(
+    "fs_write_content",
+    EV_DEFAULT,
+    "sS",
+    "fileName content",
+    "Write the specified content to a file (replaces the existing file).",
+    EV_NORMAL
+);
+Event EV_ScriptThread_FS_OpenRead
+(
+    "fs_open_read",
+    EV_DEFAULT,
+    "s",
+    "fileName",
+    "Opens the specified file for reading. Returns an FSFile object.",
+    EV_RETURN
+);
+Event EV_ScriptThread_FS_OpenWrite
+(
+    "fs_open_write",
+    EV_DEFAULT,
+    "s",
+    "fileName",
+    "Opens the specified file for writing. Returns an FSFile object.",
+    EV_RETURN
+);
+Event EV_ScriptThread_FS_OpenAppend
+(
+    "fs_open_append",
+    EV_DEFAULT,
+    "s",
+    "fileName",
+    "Opens the specified file for appending. Returns an FSFile object.",
+    EV_RETURN
+);
 
 CLASS_DECLARATION(Listener, ScriptThread, NULL) {
     {&EV_ScriptThread_GetCvar,                 &ScriptThread::Getcvar                 },
@@ -2303,6 +2348,11 @@ CLASS_DECLARATION(Listener, ScriptThread, NULL) {
     {&EV_ScriptThread_VisionGetNaked,          &ScriptThread::VisionGetNaked          },
     {&EV_ScriptThread_VisionSetNaked,          &ScriptThread::VisionSetNaked          },
     {&EV_ScriptThread_IsBot,                   &ScriptThread::IsPlayerBot             },
+    {&EV_ScriptThread_FS_ReadContent,          &ScriptThread::FS_ReadContent          },
+    {&EV_ScriptThread_FS_WriteContent,         &ScriptThread::FS_WriteContent         },
+    {&EV_ScriptThread_FS_OpenRead,             &ScriptThread::FS_OpenRead             },
+    {&EV_ScriptThread_FS_OpenWrite,            &ScriptThread::FS_OpenWrite            },
+    {&EV_ScriptThread_FS_OpenAppend,           &ScriptThread::FS_OpenAppend           },
     {NULL,                                     NULL                                   }
 };
 
@@ -3849,7 +3899,7 @@ void ScriptThread::EventCreateListener(Event *ev)
 
 void ScriptThread::EventTrace(Event *ev)
 {
-    int     content_mask = MASK_LINE;
+    int     content_mask = MASK_SOLID;
     Vector  start;
     Vector  mins;
     Vector  maxs;
@@ -3866,12 +3916,12 @@ void ScriptThread::EventTrace(Event *ev)
         mins = ev->GetVector(4);
     case 3:
         if (ev->GetInteger(3)) {
-            content_mask &= ~MASK_SCRIPT_SLAVE;
+            content_mask &= ~MASK_IGNORE_ENTS;
         }
     case 2:
-        end = ev->GetVector(2);
     case 1:
         start = ev->GetVector(1);
+        end   = ev->GetVector(2);
         break;
     default:
         throw ScriptException("Wrong number of arguments for trace.");
@@ -3885,11 +3935,12 @@ void ScriptThread::EventTrace(Event *ev)
 
 void ScriptThread::EventSightTrace(Event *ev)
 {
-    int    content_mask = MASK_SOLID;
-    Vector start;
-    Vector mins;
-    Vector maxs;
-    Vector end;
+    int      content_mask = MASK_SOLID;
+    Vector   start;
+    Vector   mins;
+    Vector   maxs;
+    Vector   end;
+    qboolean hit = qfalse;
 
     mins = vec_zero;
     maxs = vec_zero;
@@ -3904,16 +3955,16 @@ void ScriptThread::EventSightTrace(Event *ev)
             content_mask &= ~MASK_IGNORE_ENTS;
         }
     case 2:
-        end = ev->GetVector(2);
     case 1:
         start = ev->GetVector(1);
+        end   = ev->GetVector(2);
         break;
     default:
         throw ScriptException("Wrong number of arguments for sighttrace.");
     }
 
     // call trace
-    ev->AddInteger(G_SightTrace(
+    hit = G_SightTrace(
         start,
         mins,
         maxs,
@@ -3923,7 +3974,9 @@ void ScriptThread::EventSightTrace(Event *ev)
         content_mask,
         false,
         "ScriptThread::EventSightTrace"
-    ));
+    );
+
+    ev->AddInteger(hit);
 }
 
 void ScriptThread::EventPrint3D(Event *ev)
@@ -5437,6 +5490,8 @@ void ScriptThread::FileOpen(Event *ev)
     FILE *f       = NULL;
     char  buf[16] = {0};
 
+    ScriptDeprecatedAltMethod("fs_open_*");
+
     numArgs = ev->NumArgs();
 
     if (numArgs != 2) {
@@ -5477,6 +5532,8 @@ void ScriptThread::FileClose(Event *ev)
     FILE   *f       = NULL;
     char    buf[16] = {0};
 
+    ScriptDeprecatedAltMethod("FSFile->close");
+
     numArgs = ev->NumArgs();
 
     if (numArgs != 1) {
@@ -5508,6 +5565,8 @@ void ScriptThread::FileEof(Event *ev)
     int     ret     = 0;
     FILE   *f       = NULL;
 
+    ScriptDeprecatedAltMethod("FSFile->seek() and FSFile->tell()");
+
     numArgs = ev->NumArgs();
 
     if (numArgs != 1) {
@@ -5534,6 +5593,8 @@ void ScriptThread::FileSeek(Event *ev)
     long int offset  = 0;
     int      ret     = 0;
     FILE    *f       = NULL;
+
+    ScriptDeprecatedAltMethod("FSFile->seek");
 
     numArgs = ev->NumArgs();
 
@@ -5572,6 +5633,8 @@ void ScriptThread::FileTell(Event *ev)
     long int ret     = 0;
     FILE    *f       = NULL;
 
+    ScriptDeprecatedAltMethod("FSFile->tell");
+
     numArgs = ev->NumArgs();
 
     if (numArgs != 1) {
@@ -5597,6 +5660,8 @@ void ScriptThread::FileRewind(Event *ev)
     long int ret     = 0;
     FILE    *f       = NULL;
 
+    ScriptDeprecatedAltMethod("FSFile->seek");
+
     numArgs = ev->NumArgs();
 
     if (numArgs != 1) {
@@ -5620,6 +5685,8 @@ void ScriptThread::FilePutc(Event *ev)
     int     ret     = 0;
     FILE   *f       = NULL;
     int     c       = 0;
+
+    ScriptDeprecatedAltMethod("FSFile->write");
 
     numArgs = ev->NumArgs();
 
@@ -5649,6 +5716,8 @@ void ScriptThread::FilePuts(Event *ev)
     FILE   *f       = NULL;
     str     c;
 
+    ScriptDeprecatedAltMethod("FSFile->write");
+
     numArgs = ev->NumArgs();
 
     if (numArgs != 2) {
@@ -5676,6 +5745,8 @@ void ScriptThread::FileGetc(Event *ev)
     int     ret     = 0;
     FILE   *f       = NULL;
 
+    ScriptDeprecatedAltMethod("FSFile->read");
+
     numArgs = ev->NumArgs();
 
     if (numArgs != 1) {
@@ -5702,6 +5773,8 @@ void ScriptThread::FileGets(Event *ev)
     FILE   *f        = NULL;
     char   *c        = NULL;
     char   *buff     = NULL;
+
+    ScriptDeprecatedAltMethod("FSFile->read");
 
     numArgs = ev->NumArgs();
 
@@ -5752,6 +5825,8 @@ void ScriptThread::FileError(Event *ev)
     int     ret     = 0;
     FILE   *f       = NULL;
 
+    ScriptDeprecated("ferror");
+
     numArgs = ev->NumArgs();
 
     if (numArgs != 1) {
@@ -5777,6 +5852,8 @@ void ScriptThread::FileFlush(Event *ev)
     int     ret     = 0;
     FILE   *f       = NULL;
 
+    ScriptDeprecatedAltMethod("FSFile->flush");
+
     numArgs = ev->NumArgs();
 
     if (numArgs != 1) {
@@ -5800,6 +5877,8 @@ void ScriptThread::FileExists(Event *ev)
     int   numArgs = 0;
     FILE *f       = 0;
     str   filename;
+
+    ScriptDeprecatedAltMethod("fs_open_read");
 
     numArgs = ev->NumArgs();
 
@@ -5831,6 +5910,8 @@ void ScriptThread::FileReadAll(Event *ev)
     long    currentPos = 0;
     size_t  size       = 0;
     size_t  sizeRead   = 0;
+
+    ScriptDeprecatedAltMethod("fs_read_content");
 
     numArgs = ev->NumArgs();
 
@@ -5872,6 +5953,8 @@ void ScriptThread::FileSaveAll(Event *ev)
     FILE   *f         = NULL;
     size_t  sizeWrite = 0;
     str     text;
+
+    ScriptDeprecatedAltMethod("fs_write_content");
 
     numArgs = ev->NumArgs();
 
@@ -7228,6 +7311,72 @@ void ScriptThread::IsPlayerBot(Event *ev)
     ev->AddInteger(1);
 }
 
+void ScriptThread::FS_ReadContent(Event *ev) {
+    void *buffer;
+    size_t length;
+
+    const str path = ev->GetString(1);
+
+    if ((length = gi.FS_ReadFile(path, &buffer, qtrue)) == -1) {
+        ev->AddNil();
+        return;
+    }
+
+    // FIXME: Only text is supported (not binary)
+    ev->AddString((char*)buffer);
+
+    gi.FS_FreeFile(buffer);
+}
+
+void ScriptThread::FS_WriteContent(Event *ev) {
+    const str path = ev->GetString(1);
+    const str content = ev->GetString(2);
+
+    gi.FS_WriteFile(path, content, content.length());
+}
+
+void ScriptThread::FS_OpenRead(Event *ev) {
+    FSFile *file;
+    fileHandle_t f;
+
+    const str path = ev->GetString(1);
+    if (gi.FS_FOpenFile(path, &f, qtrue, qtrue) == -1) {
+        ev->AddNil();
+        return;
+    }
+
+    file = new FSFile(f);
+    ev->AddListener(file);
+}
+
+void ScriptThread::FS_OpenWrite(Event *ev) {
+    FSFile *file;
+    fileHandle_t f;
+
+    const str path = ev->GetString(1);
+    if ((f = gi.FS_FOpenFileWrite(path)) == -1) {
+        ev->AddNil();
+        return;
+    }
+
+    file = new FSFile(f);
+    ev->AddListener(file);
+}
+
+void ScriptThread::FS_OpenAppend(Event *ev) {
+    FSFile *file;
+    fileHandle_t f;
+
+    const str path = ev->GetString(1);
+    if ((f = gi.FS_FOpenFileAppend(path)) == -1) {
+        ev->AddNil();
+        return;
+    }
+
+    file = new FSFile(f);
+    ev->AddListener(file);
+}
+
 CLASS_DECLARATION(Listener, OSFile, NULL) {
     {NULL, NULL}
 };
@@ -7250,4 +7399,166 @@ OSFile::~OSFile()
 void *OSFile::getOSFile() const
 {
     return file;
+}
+
+Event EV_FSFile_Close
+(
+    "close",
+    EV_DEFAULT,
+    NULL,
+    NULL,
+    "Closes the file.",
+    EV_NORMAL
+);
+
+Event EV_FSFile_Flush
+(
+    "flush",
+    EV_DEFAULT,
+    NULL,
+    NULL,
+    "Flush to disk.",
+    EV_NORMAL
+);
+
+Event EV_FSFile_Read
+(
+    "read",
+    EV_DEFAULT,
+    "i",
+    "length",
+    "Reads n characters from file.",
+    EV_RETURN
+);
+
+Event EV_FSFile_Write
+(
+    "write",
+    EV_DEFAULT,
+    "si",
+    "buffer length",
+    "Writes n characters from file.",
+    EV_NORMAL
+);
+
+Event EV_FSFile_Seek
+(
+    "seek",
+    EV_DEFAULT,
+    "ii",
+    "offset origin",
+    "Seeks to the specified offset.\n"
+    "0 = From current\n"
+    "1 = From end\n"
+    "2 = Set\n",
+    EV_NORMAL
+);
+
+Event EV_FSFile_Tell
+(
+    "tell",
+    EV_DEFAULT,
+    NULL,
+    NULL,
+    "Returns the specified offset.",
+    EV_RETURN
+);
+
+CLASS_DECLARATION(Listener, FSFile, NULL) {
+    {&EV_FSFile_Close, &FSFile::CloseEvent},
+    {&EV_FSFile_Flush, &FSFile::FlushEvent},
+    {&EV_FSFile_Read,  &FSFile::ReadEvent },
+    {&EV_FSFile_Write, &FSFile::WriteEvent},
+    {&EV_FSFile_Seek,  &FSFile::SeekEvent },
+    {&EV_FSFile_Tell,  &FSFile::TellEvent },
+    {NULL,             NULL               }
+};
+
+FSFile::FSFile()
+{
+    handle = -1;
+}
+
+FSFile::FSFile(fileHandle_t inFile)
+    : handle(inFile)
+{}
+
+FSFile::~FSFile()
+{
+    if (handle != -1) {
+        gi.FS_FCloseFile(handle);
+    }
+}
+
+fileHandle_t FSFile::getHandle() const
+{
+    return handle;
+}
+
+void FSFile::CloseEvent(Event *ev)
+{
+    delete this;
+}
+
+void FSFile::FlushEvent(Event *ev)
+{
+    if (handle == -1) {
+        return;
+    }
+
+    gi.FS_Flush(handle);
+}
+
+void FSFile::ReadEvent(Event *ev)
+{
+    const int length  = ev->GetInteger(1);
+
+    if (handle == -1) {
+        return;
+    }
+
+    char     *buffer  = new char[length + 1];
+    const size_t readlen = gi.FS_Read(buffer, length, handle);
+    buffer[readlen] = 0;
+
+    ev->AddString(buffer);
+
+    delete[] buffer;
+}
+
+void FSFile::WriteEvent(Event *ev)
+{
+    const str buffer = ev->GetString(1);
+    const int length = ev->GetInteger(2);
+
+    if (handle == -1) {
+        return;
+    }
+
+    gi.FS_Write(buffer, length, handle);
+}
+
+void FSFile::SeekEvent(Event *ev)
+{
+    const long offset = ev->GetInteger(1);
+    const int  origin = ev->GetInteger(2);
+
+    if (handle == -1) {
+        return;
+    }
+
+    gi.FS_Seek(handle, offset, origin);
+}
+
+void FSFile::TellEvent(Event *ev)
+{
+    long offset;
+    
+    if (handle == -1) {
+        return;
+    }
+
+    offset = gi.FS_Tell(handle);
+
+    ev->AddInteger(offset);
 }
