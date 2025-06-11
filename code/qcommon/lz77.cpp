@@ -414,6 +414,26 @@ static void test_compression()
     size_t new_len;
     cLZ77  lz77;
 
+    memset(&in, 0, 0x40000);
 
+    if (lz77.Compress(in, sizeof(in), out, &out_len)) {
+        puts("Compression Failed!");
+        return;
+    }
+
+    printf("Compressed %i bytes into %zi bytes\n", 0x40000, out_len);
+
+    if (lz77.Decompress(out, out_len, in, &in_len)) {
+        new_len = in_len;
+    } else {
+        new_len = in_len;
+
+        if (in_len == 0x40000) {
+            printf("Decompressed %zi bytes into %i bytes\n", out_len, 0x40000);
+            puts("Compression Test: Passed");
+            return;
+        }
+    }
+
+    printf("Decompression got FuBar'd... %i != %zi\n", 0x40000, new_len);
 }
-*/
