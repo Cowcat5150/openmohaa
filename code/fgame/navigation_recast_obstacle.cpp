@@ -28,6 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "navigation_recast_config.h"
 #include "navigation_recast_helpers.h"
 #include "entity.h"
+#include "trigger.h"
 
 #include "DetourNavMeshQuery.h"
 
@@ -305,13 +306,15 @@ bool NavigationObstacleMap::IsValidEntity(gentity_t *ent)
         return false;
     }
 
-    if (ent->s.solid == SOLID_NOT || ent->s.solid == SOLID_TRIGGER) {
-        return false;
-    }
+    if (!IsSpecialEntity(ent)) {
+        if (ent->s.solid == SOLID_NOT || ent->s.solid == SOLID_TRIGGER) {
+            return false;
+        }
 
-    // Same contents as player's clipmask
-    if (!(ent->r.contents & MASK_PLAYERSOLID)) {
-        return false;
+        // Same contents as player's clipmask
+        if (!(ent->r.contents & MASK_PLAYERSOLID)) {
+            return false;
+        }
     }
 
     // Ignore other sentients
@@ -321,6 +324,27 @@ bool NavigationObstacleMap::IsValidEntity(gentity_t *ent)
 
     // Ignore doors as they can be interacted
     if (ent->entity->IsSubclassOfDoor()) {
+        return false;
+    }
+
+    return true;
+}
+
+bool NavigationObstacleMap::IsSpecialEntity(gentity_t *ent)
+{
+    const Trigger *trig;
+
+    //
+    // FIXME: Use an alternative solution other than hardcoding
+    //
+
+    if (!ent->entity->isSubclassOf(Trigger)) {
+        return false;
+    }
+
+    trig = static_cast<Trigger*>(ent->entity);
+
+    if (str::icmp(ent->entity->targetname, "minefield")) {
         return false;
     }
 
@@ -373,20 +397,20 @@ void NavigationObstacleMap::EngagePolysAt(const Vector& min, const Vector& max)
     size        = max - min;
     halfExtents = size * 0.5;
 
-    radiusSqr = size.lengthSquared();
+    radiusSqr = halfExtents.lengthXYSquared();
     // Minimum size of 100 units (sphere)
     // So objects like barrels that the bot can get around are ignored.
     if (radiusSqr < Square(100)) {
         return;
     }
 
-    // Allow the object to cover polygons up to twice itssize
-    query.maxRadiusSqr = radiusSqr * Square(2);
+    // Allow the object to cover polygons up to twice its size
+    query.maxRadiusSqr = radiusSqr * Square(1.5);
 
     float rcCenter[3];
     float rcHalfExtents[3];
     ConvertGameToRecastCoord(center, rcCenter);
-    ConvertGameToRecastCoord(halfExtents, rcHalfExtents);
+    ConvertGameToRecastExtents(halfExtents, rcHalfExtents);
 
     dtQueryFilter filter;
     navMeshQuery->queryPolygons(rcCenter, rcHalfExtents, &filter, &query);
@@ -405,17 +429,17 @@ void NavigationObstacleMap::ReleasePolysAt(const Vector& min, const Vector& max)
     size        = max - min;
     halfExtents = size * 0.5;
 
-    radiusSqr = size.lengthSquared();
+    radiusSqr = halfExtents.lengthXYSquared();
     if (radiusSqr < Square(100)) {
         return;
     }
 
-    query.maxRadiusSqr = radiusSqr * Square(2);
+    query.maxRadiusSqr = radiusSqr * Square(1.5);
 
     float rcCenter[3];
     float rcHalfExtents[3];
     ConvertGameToRecastCoord(center, rcCenter);
-    ConvertGameToRecastCoord(halfExtents, rcHalfExtents);
+    ConvertGameToRecastExtents(halfExtents, rcHalfExtents);
 
     dtQueryFilter filter;
     navMeshQuery->queryPolygons(rcCenter, rcHalfExtents, &filter, &query);

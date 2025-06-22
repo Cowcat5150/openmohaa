@@ -8813,7 +8813,6 @@ void Player::EnsurePlayerHasAllowedWeapons()
 {
     int i;
 
-    //if (client != (gclient_t*)-2190)
     if (!client) {
         return;
     }
@@ -9434,6 +9433,12 @@ void Player::GetSpectateFollowOrientation(Player *pPlayer, Vector& vPos, Vector&
 
 void Player::Spectator(Event *ev)
 {
+    if (g_gametype->integer == GT_SINGLE_PLAYER) {
+        // Added in OPM
+        //  No team in single player
+        return;
+    };
+
     client->pers.dm_primary[0] = 0;
     SetTeam(TEAM_SPECTATOR);
 }
@@ -9463,6 +9468,12 @@ void Player::Join_DM_Team(Event *ev)
 
     if (ev->isSubclassOf(ConsoleEvent) && disable_team_change) {
         // Added in OPM
+        return;
+    }
+
+    if (g_gametype->integer == GT_SINGLE_PLAYER) {
+        // Added in OPM
+        //  No team in single player
         return;
     }
 
@@ -9555,12 +9566,18 @@ void Player::Join_DM_Team(Event *ev)
 
 void Player::Auto_Join_DM_Team(Event *ev)
 {
-    Event *event = new Event(EV_Player_JoinDMTeam);
+    if (g_gametype->integer == GT_SINGLE_PLAYER) {
+        // Added in OPM
+        //  No team in single player
+        return;
+    };
+
+    Event event(EV_Player_JoinDMTeam, 1);
 
     if (dmManager.GetAutoJoinTeam() == TEAM_AXIS) {
-        event->AddString("axis");
+        event.AddString("axis");
     } else {
-        event->AddString("allies");
+        event.AddString("allies");
     }
 
     ProcessEvent(event);
@@ -10085,6 +10102,12 @@ void Player::EventPrimaryDMWeapon(Event *ev)
     if (!dm_weapon.length()) {
         // Added in OPM.
         //  Prevent the player from cheating by going into spectator
+        return;
+    }
+
+    if (g_gametype->integer == GT_SINGLE_PLAYER) {
+        // Added in OPM
+        //  No primary weapon in single player
         return;
     }
 
@@ -10880,6 +10903,30 @@ void Player::EventDMMessage(Event *ev)
         // everyone
         //
 
+        if (!bInstaMessage) {
+            Event          event;
+            ScriptVariable result;
+            // sent to everyone (not a team)
+            event.AddString(sToken);
+            event.AddInteger(false);
+
+            result = scriptDelegate_textMessage.Trigger(this, event);
+            if (result.HasValue()) {
+                // Filtered out by a script
+                G_PrintfClient(edict, "says @all (filtered out): %s\n", pStartMessage);
+
+                if (result.IsString()) {
+                    const str value = result.stringValue();
+                    gi.SendServerCommand(
+                        edict - g_entities, "print \"" HUD_MESSAGE_CHAT_WHITE "Script reply: %s\n\"", value.c_str()
+                    );
+                    return;
+                } else if (!result.booleanValue()) {
+                    return;
+                }
+            }
+        }
+
         // Added in OPM
         if (bInstaMessage) {
             G_PrintfClient(edict, "shouts @all: %s\n", pStartMessage);
@@ -10927,19 +10974,34 @@ void Player::EventDMMessage(Event *ev)
                 gi.SendServerCommand(i, "%s\n", szPrintString);
             }
         }
-
-        if (!bInstaMessage) {
-            Event event;
-            // sent to everyone (not a team)
-            event.AddString(sToken);
-            event.AddInteger(false);
-
-            scriptDelegate_textMessage.Trigger(this, event);
-        }
     } else if (iMode < 0) {
         //
         // team message
         //
+
+        if (!bInstaMessage) {
+            Event          event;
+            ScriptVariable result;
+            // sent to team
+            event.AddString(sToken);
+            event.AddInteger(true);
+
+            result = scriptDelegate_textMessage.Trigger(this, event);
+            if (result.HasValue()) {
+                // Filtered out by a script
+                G_PrintfClient(edict, "says @team (filtered out): %s\n", pStartMessage);
+
+                if (result.IsString()) {
+                    const str value = result.stringValue();
+                    gi.SendServerCommand(
+                        edict - g_entities, "print \"" HUD_MESSAGE_CHAT_WHITE "Script reply: %s\n\"", value.c_str()
+                    );
+                    return;
+                } else if (!result.booleanValue()) {
+                    return;
+                }
+            }
+        }
 
         // Added in OPM
         if (bInstaMessage) {
@@ -10989,15 +11051,6 @@ void Player::EventDMMessage(Event *ev)
                     gi.MSG_EndCGM();
                 }
             }
-        }
-
-        if (!bInstaMessage) {
-            Event event;
-            // sent to team
-            event.AddString(sToken);
-            event.AddInteger(true);
-
-            scriptDelegate_textMessage.Trigger(this, event);
         }
     } else if (iMode <= game.maxclients) {
         ent = &g_entities[iMode - 1];
@@ -12129,6 +12182,8 @@ bool Player::IsReady(void) const
 
 void Player::Spawned(void)
 {
+    delegate_spawned.Execute();
+
     Event *ev = new Event;
     ev->AddEntity(this);
 
@@ -12222,10 +12277,9 @@ int Player::getUseableEntities(int *touch, int maxcount, bool requiresLookAt)
         return 0;
     }
 
-    AngleVectors(client->ps.viewangles, offset, NULL, NULL);
+    AngleVectors(m_vViewAng, offset, NULL, NULL);
 
-    start = origin;
-    start.z += client->ps.viewheight;
+    start = m_vViewPos;
 
     if (requiresLookAt) {
         min = Vector(-4.f, -4.f, -4.f);
@@ -12234,10 +12288,10 @@ int Player::getUseableEntities(int *touch, int maxcount, bool requiresLookAt)
         end[0] = start[0] + (offset[0] * 64.f);
         end[1] = start[1] + (offset[1] * 64.f);
 
-        if (v_angle[0] <= 0.0f) {
-            end[2] = start[2] + (offset[2] * 40.f);
-        } else {
+        if (m_vViewAng[0] > 0) {
             end[2] = start[2] + (offset[2] * 88.f);
+        } else {
+            end[2] = start[2] + (offset[2] * 40.f);
         }
 
         trace = G_Trace(start, min, max, end, this, MASK_USE, false, "Player::getUseableEntity");

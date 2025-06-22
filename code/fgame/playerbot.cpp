@@ -82,6 +82,7 @@ BotController::~BotController()
         controlledEnt->delegate_gotKill.Remove(delegateHandle_gotKill);
         controlledEnt->delegate_killed.Remove(delegateHandle_killed);
         controlledEnt->delegate_stufftext.Remove(delegateHandle_stufftext);
+        controlledEnt->delegate_spawned.Remove(delegateHandle_spawned);
     }
 }
 
@@ -322,7 +323,9 @@ void BotController::AimAtAimNode(void)
     //}
 
     if (controlledEnt->GetLadder()) {
-        const Vector vAngles = movement.GetCurrentPathDirection().toAngles();
+        Vector vAngles = movement.GetCurrentPathDirection().toAngles();
+        vAngles.x = Q_clamp_float(vAngles.x, -80, 80);
+
         rotation.SetTargetAngles(vAngles);
         return;
     } else {
@@ -1193,6 +1196,7 @@ void BotController::setControlledEntity(Player *player)
     delegateHandle_killed = player->delegate_killed.Add(std::bind(&BotController::Killed, this, std::placeholders::_1));
     delegateHandle_stufftext =
         player->delegate_stufftext.Add(std::bind(&BotController::EventStuffText, this, std::placeholders::_1));
+    delegateHandle_spawned = player->delegate_spawned.Add(std::bind(&BotController::Spawned, this));
 }
 
 Player *BotController::getControlledEntity() const

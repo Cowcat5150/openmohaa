@@ -63,9 +63,6 @@ Fax(714)549-0757
 #include <string.h>
 #include <stdlib.h>
 
-// Added in 2.0
-#include "gcrypt.h"
-
 /**
  * @brief Custom function used to return the master host, based on game settings
  * 
@@ -79,15 +76,17 @@ extern int ServerListGetMsPort(int index);
 //#define MSPORT ServerListGetMsPort(0)
 #define SERVER_GROWBY 64
 #define LAN_SEARCH_TIME 3000 //3 sec
-#define SERVER_QUERY_MAX_PAUSE 500
-#define INTERNET_SEARCH_TIME 10000 //10 sec
 #define LIST_NUMKEYBUCKETS 500
 #define LIST_NUMKEYCHAINS 4
+#define MAX_INFO_FIELDS 20
+
+// Multi-master settings
+#define SERVER_QUERY_MAX_PAUSE 500
+#define INTERNET_SEARCH_TIME 10000 //10 sec
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 
 //todo: check state changes on error
 typedef struct 
@@ -108,7 +107,7 @@ typedef struct GServerListSocketImplementation
     char data[2048];
     int oldlen;
     gsi_time lastreplytime;
-    GCryptInfo cryptinfo;
+    crypt_key cryptkey;
 } *GServerListSocket;
 
 struct GServerListImplementation
@@ -129,16 +128,16 @@ struct GServerListImplementation
     gbool sortascending;
     GServerListSocket slsockets;
     int numslsockets;
-    int startslindex;
+    unsigned int startslindex;
     gsi_time lastsltime;
     unsigned long lanstarttime;
     GQueryType querytype;
     HashTable keylist;
 
     // Added in 2.0
-    int numservers;
+    int auxinsertcount;
     // Added in 2.0
-    //GCryptInfo cryptinfo;
+    //Gcryptkey cryptkey;
     // Added in OPM
     int encryptdata;
     gbool async;
@@ -147,6 +146,9 @@ struct GServerListImplementation
 };
 
 GServerList g_sortserverlist; //global serverlist for sorting info!!
+
+//PANTS - 10.2.00
+char ServerListHostname[64] = "";
 
 /* these correspond to the qt_ constants */
 #define NUM_QUERYTYPES 6
@@ -158,6 +160,9 @@ static void KeyValFree(void *elem);
 static int KeyValCompareKeyA(const void *entry1, const void *entry2);
 static int KeyValHashKeyA(const void *elem, int numbuckets);
 static gbool ServerListHasFinishedFetchingList(GServerList serverlist);
+static GError ServerListCheckSocketError(GServerList serverlist, GServerListSocket slsocket);
+static GError ServerListStartQuery(GServerList serverlist, GServerListSocket slsocket, gbool async);
+GError ServerListThinkSocket(GServerList serverlist, GServerListSocket slsocket);
 
 /* ServerListNew
 ----------------
@@ -166,13 +171,13 @@ GServerList	ServerListNew(const char *gamename, const char *enginename, const ch
 {
     GServerList list;
 
-    list = (GServerList) malloc(sizeof(struct GServerListImplementation));
+    list = (GServerList) gsimalloc(sizeof(struct GServerListImplementation));
     assert(list != NULL);
     list->state = sl_idle;
     list->servers = ArrayNew(sizeof(GServer), SERVER_GROWBY, ServerFree);
     list->keylist = TableNew2(sizeof(char *),LIST_NUMKEYBUCKETS,LIST_NUMKEYCHAINS,GStringHash, GCaseInsensitiveCompare, GStringFree);
     list->maxupdates = maxconcupdates;
-    list->updatelist = malloc(maxconcupdates * sizeof(UpdateInfo));
+    list->updatelist = gsimalloc(maxconcupdates * sizeof(UpdateInfo));
     memset(list->updatelist, 0, maxconcupdates * sizeof(UpdateInfo));
     assert(list->updatelist != NULL);
     strcpy(list->gamename, gamename);
@@ -183,7 +188,7 @@ GServerList	ServerListNew(const char *gamename, const char *enginename, const ch
     list->instance = instance;
     list->sortkey = "";
     // Added in 2.0
-    list->numservers = 0;
+    list->auxinsertcount = 0;
     // Added in OPM
     list->encryptdata = 1;
     list->async = 0;
@@ -195,7 +200,7 @@ GServerList	ServerListNew(const char *gamename, const char *enginename, const ch
         // Above 4 seems too much
         list->numslsockets = 4;
     }
-    list->slsockets = (GServerListSocket)malloc(sizeof(struct GServerListSocketImplementation) * list->numslsockets);
+    list->slsockets = (GServerListSocket)gsimalloc(sizeof(struct GServerListSocketImplementation) * list->numslsockets);
     memset(list->slsockets, 0, sizeof(struct GServerListSocketImplementation) * list->numslsockets);
     list->startslindex = 0;
     list->lastsltime = current_time();
@@ -211,10 +216,10 @@ void ServerListFree(GServerList serverlist)
 {
     ArrayFree(serverlist->servers);
     TableFree(serverlist->keylist);
-    free(serverlist->updatelist);
-    free(serverlist->slsockets);
+    gsifree(serverlist->updatelist);
+    gsifree(serverlist->slsockets);
 
-    free(serverlist);
+    gsifree(serverlist);
     SocketShutDown();
 }
 
@@ -241,7 +246,7 @@ static GError InitUpdateList(GServerList serverlist)
 
 }
 
-//free update sockets 
+//gsifree update sockets 
 static GError FreeUpdateList(GServerList serverlist) 
 {
     int i;
@@ -260,7 +265,6 @@ static GError CreateServerListSocket(GServerList serverlist, GServerListSocket s
     struct   sockaddr_in saddr;
     struct hostent *hent;
     int lasterr;
-    int i;
     int port;
     const char *host;
 
@@ -304,7 +308,7 @@ static GError CreateServerListSocket(GServerList serverlist, GServerListSocket s
 
     slsocket->socketstate = ls_connecting;
     slsocket->oldlen = 0;
-    slsocket->cryptinfo.offset = -1;
+    slsocket->cryptkey.index = -1; //mark as uninitialized
     slsocket->lastreplytime = current_time();
     serverlist->startslindex++;
 
@@ -375,14 +379,14 @@ static GError SendListRequest(GServerList serverlist, GServerListSocket slsocket
     if (!ptr)
         return GE_DATAERROR;
     ptr = ptr + strlen(SECURE);
-    gs_encrypt   ( (uchar *) serverlist->seckey, 6, (uchar *)ptr, 6 );
+    cengine_gs_encrypt   ( (uchar *) serverlist->seckey, 6, (uchar *)ptr, 6 );
     if (serverlist->encryptdata) {
         // Added in 2.0
         for(i = 0; i < 6; i++) {
             ptr[i] ^= serverlist->seckey[i];
         }
     }
-    gs_encode ( (uchar *)ptr, 6, (uchar *) result );
+    cengine_gs_encode ( (uchar *)ptr, 6, (uchar *) result );
 
     if (serverlist->encryptdata) {
         // Added in 2.0
@@ -400,18 +404,18 @@ static GError SendListRequest(GServerList serverlist, GServerListSocket slsocket
     if (gsiSocketIsError(len) || len == 0)
         return GE_NOCONNECT;
 
-    if (serverlist->querytype == qt_grouprooms) {
+    if (serverlist->querytype == qt_grouprooms)
+    {
         modifier = "groups";
-
         serverlist->pistate = pi_fieldcount;
-    } else if (serverlist->querytype == qt_masterinfo) {
+    } 
+    else if (serverlist->querytype == qt_masterinfo)
+    {
         modifier = "info2";
-
         serverlist->pistate = pi_fieldcount;
-    } else {
-        modifier = "cmp";
     }
-
+    else
+        modifier = "cmp";
     //send the list request
     if (filter)
         sprintf(data, "\\list\\%s\\gamename\\%s\\where\\%s\\final\\", modifier, serverlist->gamename, filter);
@@ -431,7 +435,7 @@ static GError SendListRequest(GServerList serverlist, GServerListSocket slsocket
 static GError SendBroadcastRequest(GServerList serverlist, int startport, int endport, int delta)
 {
     struct   sockaddr_in saddr;
-    short i;
+    unsigned short i;
 
     saddr.sin_family = AF_INET;
     saddr.sin_addr.s_addr = 0xFFFFFFFF; //broadcast
@@ -468,70 +472,6 @@ GError ServerListUpdate(GServerList serverlist, gbool async)
     return ServerListUpdate2(serverlist, async, NULL, qt_status);
 }
 
-/* ServerListCheckSocketError
--------------------------
-Verify if the server list socket has an error or has timed out, and abort. */
-GError ServerListCheckSocketError(GServerList serverlist, GServerListSocket slsocket)
-{
-    int so_error;
-    int len = sizeof(so_error);
-    getsockopt(slsocket->s, SOL_SOCKET, SO_ERROR, &so_error, &len);
-
-    // Abort if the socket has an error or if it connect/recv has timed out
-    if (so_error || current_time() >= slsocket->lastreplytime + INTERNET_SEARCH_TIME) {
-        closesocket(slsocket->s);
-        slsocket->s = INVALID_SOCKET;
-        slsocket->socketstate = ls_none;
-        return GE_NOCONNECT;
-    }
-
-    return 0;
-}
-
-/* ServerListStartQuery
--------------------------
-Start querying a GServerList. */
-GError ServerListStartQuery(GServerList serverlist, GServerListSocket slsocket, gbool async)
-{
-    GError error;
-    int i;
-
-    if (slsocket->socketstate != ls_connecting) {
-        return GE_BUSY;
-    }
-
-    if (serverlist->abortupdate) {
-        for(i = 0; i < serverlist->numslsockets; i++) {
-            closesocket(serverlist->slsockets[i].s);
-            serverlist->slsockets[i].s = INVALID_SOCKET;
-        }
-        ServerListModeChange(serverlist, sl_idle);
-        return GE_NOCONNECT;
-    }
-
-    if (async) {
-        // Check for pending data
-        char buf;
-        if (recv(slsocket->s, &buf, 1, MSG_PEEK) == -1) {
-            return GE_BUSY;
-        }
-    }
-
-    slsocket->socketstate = ls_connected;
-
-    error = SendListRequest(serverlist, slsocket, serverlist->filter);
-    if (error) return error;
-    if (serverlist->querytype != qt_grouprooms && serverlist->querytype != qt_masterinfo) {
-        error = InitUpdateList(serverlist);
-        if (error) return error;
-    }
-
-    if (!async)
-        DoSyncLoop(serverlist);
-
-    return 0;
-}
-
 /* ServerListUpdate2
 -------------------------
 Start updating a GServerList. */
@@ -550,9 +490,9 @@ GError ServerListUpdate2(GServerList serverlist, gbool async, char *filter, GQue
     serverlist->nextupdate = 0;
     serverlist->abortupdate = 0;
     // Added in 2.0
-    serverlist->numservers = ServerListCount(serverlist);
+    serverlist->auxinsertcount = ServerListCount(serverlist);
     // Added in 2.0
-    //serverlist->cryptinfo.offset = -1;
+    //serverlist->cryptkey.index = -1;
     if (filter) {
         strncpy(serverlist->filter, filter, sizeof(serverlist->filter));
     } else {
@@ -600,41 +540,48 @@ GError ServerListLANUpdate(GServerList serverlist, gbool async, int startsearchp
     return 0;
 }
 
-//add a new server based on the data
+
 static GServer ServerListAddServerData(GServerList serverlist, char **fieldlist, int fieldcount, char *serverdata, GQueryType qtype)
 {
     GServer server;
-
     server = ServerNewData(fieldlist, fieldcount, serverdata, qtype, serverlist->keylist);
-    ArrayAppend(serverlist->servers, &server);
+    ArrayAppend(serverlist->servers,&server);
     return server;
 }
 
 //add the server to the list with the given ip, port
-static void ServerListAddServer(GServerList serverlist, unsigned long ip, unsigned short port, GQueryType qtype)
+//removed "static" token so that outsiders can add servers to a list - did not alter .h files (28mar01/bgw)
+GServer ServerListAddServer(GServerList serverlist, goa_uint32 ip, unsigned short port, GQueryType qtype)
 {
     GServer server;
+    
+    // 2001.Apr.10.JED - can't add anything to a bogus server list
+    assert(serverlist);
+    if(!serverlist)
+        return NULL;
+
     server =  ServerNew(ip, port, qtype, serverlist->keylist);
     ArrayAppend(serverlist->servers,&server);
- //printf("%d %s:%d\n",++count, ip,port);
+    return server;
 }
 
 //add the server to the list with the given ip, port
-static void ServerListInsertServer(GServerList serverlist, unsigned long ip, unsigned short port, int pos, GQueryType qtype)
+static GServer ServerListInsertServer(GServerList serverlist, goa_uint32 ip, unsigned short port, int pos, GQueryType qtype)
 {
     GServer server;
     server =  ServerNew(ip, port, qtype, serverlist->keylist);
     ArrayInsertAt(serverlist->servers,&server,pos);
- //printf("%d %s:%d\n",++count, ip,port);
+    return server;
 }
 
-//find the server in the list, returns -1 if it does not exist
-static int ServerListFindServerMax(GServerList serverlist, unsigned int ip, int port, int count)
+
+//find the server in the list (up to max), returns -1 if it does not exist
+static int ServerListFindServerMax(GServerList serverlist, unsigned int ip, int port, int maxcheck)
 {
     int i;
     GServer server;
 
-    for (i = 0; i < count ; i++)
+    for (i = 0; i < maxcheck ; i++)
     {
         server = *(GServer *)ArrayNth(serverlist->servers,i);
         if (port == ServerGetQueryPort(server) && ServerGetInetAddress(server)==ip)
@@ -714,6 +661,7 @@ GError ServerListAuxUpdate(GServerList serverlist, const char *ip, int port, gbo
         if (currentindex != -1) //we need to "move" this server to the end of the list
         { //move the server to the end of the array
             GServer holdserver = *(GServer *)ArrayNth(serverlist->servers,currentindex);
+            holdserver->querytype = querytype;
             holdserver->ping = 9999;//clear the ping so it gets recalculated
             ArrayRemoveAt(serverlist->servers,currentindex);
             ArrayAppend(serverlist->servers,&holdserver);
@@ -740,12 +688,17 @@ GError ServerListAuxUpdate(GServerList serverlist, const char *ip, int port, gbo
         //crt -- make it the next server to be queried
         //note: this should NEVER be called in a different thread from think!!
         if (currentindex == -1) //it doesn't exist yet
+        {
             ServerListInsertServer(serverlist, real_ip, (unsigned short)port, serverlist->nextupdate, querytype);
+            if (serverlist->state == sl_listxfer || serverlist->state == sl_lanlist) //list is still being xfer'd - make sure it won't add this again!
+                serverlist->auxinsertcount++;
+        }
         else 
         { //it exists, find out whats happening to it
             GServer holdserver = *(GServer *)ArrayNth(serverlist->servers,currentindex);
             if (currentindex >= serverlist->nextupdate) //hasn't been queried yet!
                 return 0; //it will be queried soon anyway
+            holdserver->querytype = querytype;
             holdserver->ping = 9999;//clear the ping so it gets recalculated
             updateindex = ServerListFindServerInUpdateList(serverlist, holdserver);
             if (updateindex != -1) //is currently being queried, stop it
@@ -777,9 +730,13 @@ static GError ServerListLANList(GServerList serverlist, GServerListSocket slsock
         error = recvfrom(slsocket->s, indata, sizeof(indata) - 1, 0, (struct sockaddr *)&saddr, &saddrlen );
         if (gsiSocketIsError(error))
             continue; 
+        indata[sizeof(indata) - 1] = 0;
         //we got data, add the server to the list to update
         if (strstr(indata,"\\final\\") != NULL)
-            ServerListAddServer(serverlist,saddr.sin_addr.s_addr, ntohs(saddr.sin_port), qt_status);
+        {
+            if (ServerListFindServer(serverlist,saddr.sin_addr.s_addr,ntohs(saddr.sin_port)) == -1)
+                ServerListAddServer(serverlist,saddr.sin_addr.s_addr, ntohs(saddr.sin_port), qt_status);
+        }
     }
     if (current_time() - serverlist->lanstarttime > LAN_SEARCH_TIME) //done waiting for replies
     {
@@ -788,95 +745,94 @@ static GError ServerListLANList(GServerList serverlist, GServerListSocket slsock
         ServerListModeChange(serverlist, sl_querying);
     }
     return 0;
+
 }
 
+//parses a \ delimited string and counts the number of characters to the Nth \ character
+// e.g. \test\3\test2\2335 N = 3, returns 8
 static int CountSlashOffset(char *data, int len, int slashcount)
 {
-    char *p;
-
-    for (p = data; slashcount && p != data + len; ++p) {
-        if (*p == '\\') {
+    char *p = data;
+    while (slashcount && p != data + len)
+    {
+        if (*p == '\\')
             slashcount--;
-        }
+        p++;		
     }
-
-    if (slashcount) {
+    if (slashcount == 0)
+        return p - data;
+    else
         return -1;
-    }
-
-    return p - data;
 }
 
-//parses and retrieve servers based on fields
+#define FIELDCOUNT_LENGTH 12 //length of string \fieldcount\ --
+//parses a server list with info in it, the format is:
+// \fieldcount\N\field1\field2\...\fieldN\server1Field1\server1Field2\...
+// \server1FieldN\server2Field1\server2Field2\...\serverXFieldN\final\ ---
 static int ServerListParseInfoList(GServerList serverlist, char *data, int len)
 {
-    char      *fieldlist[20];
-    char       tempfield[64];
-    char      *tempptr;
+    static char *fieldlist[MAX_INFO_FIELDS];
+    char tempfield[64], *tempptr;
     static int fieldcount;
-    int        offset;
-    int        i;
-    GServer    server;
-
-    switch (serverlist->pistate) {
+    int offset;
+    int i;
+    GServer server;
+    
+    switch (serverlist->pistate)
+    {
     case pi_fieldcount:
-        offset = CountSlashOffset(data, len, 3);
-        if (offset == -1) {
+        offset = CountSlashOffset(data, len, 3); //looking for \fieldcount\N\ --
+        if (offset == -1)
             return 0;
-        }
-        if (offset < 12) {
-            return 0;
-        }
-
-        strncpy(tempfield, data + 12, offset - 12);
-        tempfield[offset - 13] = 0;
-
+        if (offset < FIELDCOUNT_LENGTH)
+            return -1; //the data is incorrect!
+        strncpy(tempfield, data + FIELDCOUNT_LENGTH, offset - FIELDCOUNT_LENGTH);
+        tempfield[offset - FIELDCOUNT_LENGTH - 1] = 0;
         fieldcount = atoi(tempfield);
-        if (fieldcount > 20) {
-            return -1;
-        }
-
+        if (fieldcount > MAX_INFO_FIELDS)
+            return -1; //this won't work!
         serverlist->pistate = pi_fields;
-
-        for (i = 0; i < fieldcount; ++i) {
-            fieldlist[i] = 0;
-        }
-
-        return offset - 1;
+        for (i = 0 ; i < fieldcount ; i++)
+            fieldlist[i] = NULL; //make sure it gets null'd
+        return offset - 1;//don't count the slash character..
+        break;
     case pi_fields:
-        offset = CountSlashOffset(data, len, 2);
-        if (offset == -1) {
+        offset = CountSlashOffset(data, len, 2); //looking for \fieldname\ --
+        if (offset == -1)
             return 0;
-        }
-
-        strncpy(tempfield, data + 1, offset - 2);
-        tempfield[offset - 2] = 0;
-        tempptr               = goastrdup(tempfield);
-
-        for (i = 0; i < fieldcount; ++i) {
-            if (!fieldlist[i]) {
+        strncpy(tempfield, data + 1, offset - 2); //copy just "fieldname"
+        tempfield[offset-2] = 0;
+        tempptr = strdup(tempfield);
+        TableEnter(serverlist->keylist,&tempptr);
+        //find the place to insert it..
+        for (i = 0; i < fieldcount ; i++)
+            if (fieldlist[i] == NULL)
+            {
                 fieldlist[i] = tempptr;
-                if (i == fieldcount - 1) {
+                if (i == fieldcount - 1) //that's the last field, advance us!
+                {
                     serverlist->pistate = pi_servers;
                 }
                 return offset - 1;
-            }
-        }
-
-        return -1;
+            }		
+        break;
     case pi_servers:
-        offset = CountSlashOffset(data, len, fieldcount + 1);
-        if (offset == -1) {
+        offset = CountSlashOffset(data, len, fieldcount+1); //get the next set of fields
+        if (offset == -1)
             return 0;
-        }
-
-        server = ServerListAddServerData(serverlist, (char **)fieldlist, fieldcount, data, serverlist->querytype);
-        data[offset - 1] = '\\';
-        serverlist->CallBackFn(serverlist, 2, serverlist->instance, server, 0);
+        //now add a server with the data as the string
+        server = ServerListAddServerData(serverlist, fieldlist, fieldcount, data, serverlist->querytype);
+        data[offset - 1] = '\\'; //make sure the \ char doesn't get nuked insde AddServerData
+        serverlist->CallBackFn(serverlist, 
+                                LIST_PROGRESS, 
+                                serverlist->instance,
+                                server,
+                                0); //percent done
+                                
         return offset - 1;
-    default:
-        return -1;
+        break;
     }
+    return -1; //bad state!
 }
 
 //reads the server list from the socket and parses it
@@ -916,9 +872,10 @@ static GError ServerListReadList(GServerList serverlist, GServerListSocket slsoc
     slsocket->lastreplytime = current_time();
     serverlist->lastsltime = slsocket->lastreplytime;
 
-    if (serverlist->encryptdata && slsocket->cryptinfo.offset != -1) {
+    if (serverlist->encryptdata && slsocket->cryptkey.index != -1)
+    {
         // Added in 2.0
-        crypt_docrypt(&slsocket->cryptinfo, slsocket->data + slsocket->oldlen, len);
+        crypt_docrypt(&slsocket->cryptkey, slsocket->data + slsocket->oldlen, len);
     }
 
     slsocket->oldlen += len;
@@ -926,22 +883,27 @@ static GError ServerListReadList(GServerList serverlist, GServerListSocket slsoc
     p = slsocket->data;
 
     if (!serverlist->encryptdata) {
-        slsocket->cryptinfo.offset = 0;
-    } else if (slsocket->cryptinfo.offset == -1) {
+        slsocket->cryptkey.index = 0;
+    } else if (slsocket->cryptkey.index == -1) {
         // Added in 2.0
-        if (slsocket->oldlen > (*p ^ 0xEC)) {
-            *p ^= 0xEC;
+        if (slsocket->oldlen > (p[0] ^ 0xEC)) //the key length
+        {
+            //xor our key into the buffer
+            p[0] ^= 0xEC;
             len = strlen(serverlist->seckey);
-            for (i = 0; i < len; i++) {
-                p[i + 1] ^= serverlist->seckey[i];
+            for (i = 0 ; i < len ; i++)
+            {
+                p[1 + i] ^= serverlist->seckey[i];
             }
-            init_crypt_key((unsigned char *)p + 1, *p, &slsocket->cryptinfo);
-            p += *p + 1;
-            crypt_docrypt(&slsocket->cryptinfo, (unsigned char *)p, slsocket->oldlen - (p - slsocket->data));
+            //init the key
+            init_crypt_key((unsigned char *)(p + 1), p[0], &slsocket->cryptkey);
+            p += (p[0] + 1); //advance the data pointer
+            //decrypt any remaining data
+            crypt_docrypt(&slsocket->cryptkey, p, slsocket->oldlen - (p - slsocket->data));
         }
     }
 
-    if (slsocket->cryptinfo.offset != -1)
+    if (slsocket->cryptkey.index != -1) //try to read some data
     {
         while (p - slsocket->data <= slsocket->oldlen - 6)
         {
@@ -951,34 +913,37 @@ static GError ServerListReadList(GServerList serverlist, GServerListSocket slsoc
                 slsocket->s = INVALID_SOCKET;
                 slsocket->socketstate = ls_none;
                 slsocket->oldlen = 0; //clear data so it can be used again
-                if (serverlist->querytype == qt_grouprooms || serverlist->querytype == qt_masterinfo) {
-                    ServerListModeChange(serverlist, sl_idle);
-                } else {
+                if (serverlist->querytype == qt_grouprooms || serverlist->querytype == qt_masterinfo)
+                    ServerListModeChange(serverlist, sl_idle); //go idle if we are just getting a GR list
+                else
                     ServerListModeChange(serverlist, sl_querying);
-                }
                 return 0; //get out!!
             }
             if (slsocket->oldlen < 6) //no way it could be a full IP, quit
                 break;
-
             if (serverlist->querytype == qt_grouprooms || serverlist->querytype == qt_masterinfo) {
-                i = ServerListParseInfoList(serverlist, p, slsocket->oldlen - (p - slsocket->data));
-                if (i < 0) {
+                i = ServerListParseInfoList(serverlist, p,slsocket->oldlen - (p - slsocket->data));
+                if (i < 0) //the data was in a bad format, abort!
                     serverlist->abortupdate = 1;
-                } else if (!i) {
-                    // finished
+                else if (i == 0) //not enough info yet, read more!
                     break;
-                }
-            } else {
+                else
+                    p += i;
+            } else
+            {
+                int currentindex;
                 memcpy(&ip, p, 4);
                 p += 4;
                 memcpy(&port, p, 2);
                 p += 2;
                 // Added in 2.0
                 //  Skip adding the server if already exists
-                if (ServerListFindServer(serverlist, ip, ntohs(port)) == -1) {
-                    ServerListAddServer(serverlist, ip, ntohs(port), serverlist->querytype);
-                }
+                //currentindex = ServerListFindServerMax(serverlist,ip,ntohs(port), serverlist->auxinsertcount);
+                // Fixed in OPM
+                //  Use the entire array instead
+                currentindex = ServerListFindServer(serverlist,ip,ntohs(port));
+                if (currentindex == -1)
+                    ServerListAddServer(serverlist,ip,  ntohs(port), serverlist->querytype );	
             }
         }
     }
@@ -989,7 +954,6 @@ static GError ServerListReadList(GServerList serverlist, GServerListSocket slsoc
 }
 
 //loop through pending queries and send out new ones
-
 static GError ServerListQueryLoop(GServerList serverlist)
 {
     int i, scount = 0, error, final;
@@ -1011,7 +975,6 @@ static GError ServerListQueryLoop(GServerList serverlist)
         }
     if (scount > 0) //there are sockets to check for data
     {
-
         error = select(FD_SETSIZE, &set, NULL, NULL, &timeout);
         if (!gsiSocketIsError(error) && 0 != error)
             for (i = 0 ; i < serverlist->maxupdates ; i++)
@@ -1058,7 +1021,7 @@ static GError ServerListQueryLoop(GServerList serverlist)
                 */
             serverlist->updatelist[i].currentserver = NULL; //reuse the updatelist
         }
-
+        
     if (serverlist->abortupdate || (serverlist->nextupdate >= ArrayLength(serverlist->servers) && scount == 0)) 
     { //we are done!!
         FreeUpdateList(serverlist);
@@ -1098,66 +1061,6 @@ static GError ServerListQueryLoop(GServerList serverlist)
 
 
     return 0;
-}
-
-/* ServerListThinkSocket
-------------------
-For use with Async Updates. This needs to be called every ~10ms for list processing and
-updating to occur during async server list updates */
-GError ServerListThinkSocket(GServerList serverlist, GServerListSocket slsocket)
-{
-    GError socketerror;
-
-    if (slsocket->s == INVALID_SOCKET) {
-        return GE_NOSOCKET;
-    }
-
-    socketerror = ServerListCheckSocketError(serverlist, slsocket);
-    if (socketerror) {
-        return socketerror;
-    }
-
-    switch(slsocket->socketstate)
-    {
-        case ls_connecting:
-                ServerListStartQuery(serverlist, slsocket, 1);
-                break;
-        case ls_connected:
-                //read the data
-                return ServerListReadList(serverlist, slsocket);
-                break;
-        default:
-                break;
-    }
-
-    switch (serverlist->state)
-    {
-        case sl_idle: return 0;
-        case sl_listxfer:
-                 //read the data
-                //return ServerListReadList(serverlist, slsocket);
-                break;
-        case sl_lanlist:
-                return ServerListLANList(serverlist, slsocket);
-    }
-
-    return 0;
-}
-
-/* ServerListHasFinishedFetchingList
-------------------
-Whether or not the list has finished fetching */
-static gbool ServerListHasFinishedFetchingList(GServerList serverlist)
-{
-    int i;
-
-    for(i = 0; i < serverlist->numslsockets; i++) {
-        if (serverlist->slsockets[i].s != INVALID_SOCKET) {
-            return 0;
-        }
-    }
-
-    return 1;
 }
 
 /* ServerListThink
@@ -1205,7 +1108,7 @@ GError ServerListHalt(GServerList serverlist)
 
 /* ServerListClear
 ------------------
-Clear and free all of the servers from the server list.
+Clear and gsifree all of the servers from the server list.
 List must be in the sl_idle state */
 GError ServerListClear(GServerList serverlist)
 {
@@ -1215,6 +1118,9 @@ GError ServerListClear(GServerList serverlist)
     //fastest way to clear is kill and recreate
     ArrayFree(serverlist->servers);
     serverlist->servers = ArrayNew(sizeof(GServer), SERVER_GROWBY, ServerFree);
+    TableFree(serverlist->keylist);
+    serverlist->keylist = TableNew2(sizeof(char *),LIST_NUMKEYBUCKETS,LIST_NUMKEYCHAINS,GStringHash, GCaseInsensitiveCompare, GStringFree);
+    serverlist->auxinsertcount = 0;
     return 0;
 }
 
@@ -1332,6 +1238,8 @@ void ServerListSort(GServerList serverlist, gbool ascending, char *sortkey, GCom
         break;
     case cm_stricase: comparator = StrNoCaseKeyCompare;
         break;
+    default: 
+        comparator = StrNoCaseKeyCompare;
     }
     serverlist->sortkey = sortkey;
     serverlist->sortascending = ascending;
@@ -1341,6 +1249,133 @@ void ServerListSort(GServerList serverlist, gbool ascending, char *sortkey, GCom
 }
 
 
+
+
+/* ServerListCheckSocketError
+-------------------------
+Verify if the server list socket has an error or has timed out, and abort. */
+static GError ServerListCheckSocketError(GServerList serverlist, GServerListSocket slsocket)
+{
+    int so_error;
+    int len = sizeof(so_error);
+    getsockopt(slsocket->s, SOL_SOCKET, SO_ERROR, (void*)&so_error, &len);
+
+    // Abort if the socket has an error or if it connect/recv has timed out
+    if (so_error || current_time() >= slsocket->lastreplytime + INTERNET_SEARCH_TIME) {
+        closesocket(slsocket->s);
+        slsocket->s = INVALID_SOCKET;
+        slsocket->socketstate = ls_none;
+        return GE_NOCONNECT;
+    }
+
+    return 0;
+}
+
+/* ServerListStartQuery
+-------------------------
+Start querying a GServerList. */
+static GError ServerListStartQuery(GServerList serverlist, GServerListSocket slsocket, gbool async)
+{
+    GError error;
+    int i;
+
+    if (slsocket->socketstate != ls_connecting) {
+        return GE_BUSY;
+    }
+
+    if (serverlist->abortupdate) {
+        for(i = 0; i < serverlist->numslsockets; i++) {
+            closesocket(serverlist->slsockets[i].s);
+            serverlist->slsockets[i].s = INVALID_SOCKET;
+        }
+        ServerListModeChange(serverlist, sl_idle);
+        return GE_NOCONNECT;
+    }
+
+    if (async) {
+        // Check for pending data
+        char buf;
+        if (recv(slsocket->s, &buf, 1, MSG_PEEK) == -1) {
+            return GE_BUSY;
+        }
+    }
+
+    slsocket->socketstate = ls_connected;
+
+    error = SendListRequest(serverlist, slsocket, serverlist->filter);
+    if (error) return error;
+    if (serverlist->querytype != qt_grouprooms && serverlist->querytype != qt_masterinfo) {
+        error = InitUpdateList(serverlist);
+        if (error) return error;
+    }
+
+    if (!async)
+        DoSyncLoop(serverlist);
+
+    return 0;
+}
+
+/* ServerListHasFinishedFetchingList
+------------------
+Whether or not the list has finished fetching */
+static gbool ServerListHasFinishedFetchingList(GServerList serverlist)
+{
+    int i;
+
+    for(i = 0; i < serverlist->numslsockets; i++) {
+        if (serverlist->slsockets[i].s != INVALID_SOCKET) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+/* ServerListThinkSocket
+------------------
+For use with Async Updates. This needs to be called every ~10ms for list processing and
+updating to occur during async server list updates */
+GError ServerListThinkSocket(GServerList serverlist, GServerListSocket slsocket)
+{
+    GError socketerror;
+
+    if (slsocket->s == INVALID_SOCKET) {
+        return GE_NOSOCKET;
+    }
+
+    socketerror = ServerListCheckSocketError(serverlist, slsocket);
+    if (socketerror) {
+        return socketerror;
+    }
+
+    switch(slsocket->socketstate)
+    {
+        case ls_connecting:
+                ServerListStartQuery(serverlist, slsocket, 1);
+                break;
+        case ls_connected:
+                //read the data
+                return ServerListReadList(serverlist, slsocket);
+                break;
+        default:
+                break;
+    }
+
+    switch (serverlist->state)
+    {
+        case sl_idle: return 0;
+        case sl_listxfer:
+                 //read the data
+                //return ServerListReadList(serverlist, slsocket);
+                break;
+        case sl_lanlist:
+                return ServerListLANList(serverlist, slsocket);
+        default:
+                break;
+    }
+
+    return 0;
+}
 
 #ifdef __cplusplus
 }

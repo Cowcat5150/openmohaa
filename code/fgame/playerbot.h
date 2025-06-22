@@ -66,6 +66,8 @@ public:
     Vector GetCurrentPathDirection() const;
 
 private:
+    Vector CalculateDir(const Vector& delta) const;
+    Vector CalculateRelativeWishDirection(const Vector& dir) const;
     void   CheckAttractiveNodes();
     void   CheckEndPos(Entity *entity);
     void   CheckJump(usercmd_t& botcmd);
@@ -83,8 +85,7 @@ private:
     Vector m_vCurrentOrigin;
     Vector m_vTargetPos;
     Vector m_vCurrentGoal;
-    Vector m_vLastValidDir;
-    Vector m_vLastValidGoal;
+    Vector m_vCurrentDir;
     Vector m_vLastCheckPos[2];
     float  m_fAttractTime;
     int    m_iTempAwayTime;
@@ -106,8 +107,8 @@ private:
     /// Jump detection
     ///
 
-    bool m_bJump;
-    int  m_iJumpCheckTime;
+    bool   m_bJump;
+    int    m_iJumpCheckTime;
     Vector m_vJumpLocation;
 };
 
@@ -128,8 +129,8 @@ private:
 
     Vector m_vTargetAng;
     Vector m_vCurrentAng;
+    Vector m_vAngDelta;
     Vector m_vAngSpeed;
-    float  m_fYawSpeedMult;
 };
 
 class BotState
@@ -186,6 +187,7 @@ private:
     DelegateHandle delegateHandle_gotKill;
     DelegateHandle delegateHandle_killed;
     DelegateHandle delegateHandle_stufftext;
+    DelegateHandle delegateHandle_spawned;
 
 private:
     Weapon *FindWeaponWithAmmo(void);

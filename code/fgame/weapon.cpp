@@ -2261,13 +2261,13 @@ qboolean Weapon::ReadyToFire(firemode_t mode, qboolean playsound)
 
             if (playsound && (level.time > next_maxmovement_time)) {
                 Sound(m_sMaxMovementSound);
-                next_maxmovement_time = level.time + level.frametime + G_Random(0.1f) + 0.95f;
+                next_maxmovement_time = level.time + level.frametime + 0.5;
             }
         }
 
         if (playsound && (level.time > next_noammo_time)) {
             Sound(m_NoAmmoSound);
-            next_noammo_time = level.time + level.frametime + G_Random(0.1f) + 0.95f;
+            next_noammo_time = level.time + level.frametime + FireDelay(mode);
         }
     }
     return qfalse;
@@ -3036,7 +3036,7 @@ void Weapon::PickupWeapon(Event *ev)
         const str& sAmmoType = ammo_type[FIRE_PRIMARY];
 
         sen->GiveAmmo(sAmmoType, iGiveAmmo);
-
+        
         if (!sAmmoType.icmp("grenade") || !sAmmoType.icmp("agrenade")) {
             if (iGiveAmmo == 1) {
                 sMessage = gi.LV_ConvertString("Got 1 Grenade");
@@ -3044,7 +3044,7 @@ void Weapon::PickupWeapon(Event *ev)
                 sMessage = gi.LV_ConvertString(va("Got %i Grenades", iGiveAmmo));
             }
         } else {
-            sMessage = gi.LV_ConvertString(va("Got %i %s Rounds", iGiveAmmo, sAmmoType.c_str()));
+            sMessage = gi.LV_ConvertString(va("Got %i %s Rounds", iGiveAmmo, GetCapitalized(sAmmoType).c_str()));
         }
 
         gi.SendServerCommand(other->edict - g_entities, "print \"" HUD_MESSAGE_YELLOW "%s\n\"", sMessage.c_str());
@@ -3072,7 +3072,7 @@ void Weapon::PickupWeapon(Event *ev)
                     sMessage = gi.LV_ConvertString(va("Got %i Rifle Grenades", iGiveAmmo));
                 }
             } else {
-                sMessage = gi.LV_ConvertString(va("Got %i %s Rounds", startammo[FIRE_PRIMARY], sAmmoType.c_str()));
+                sMessage = gi.LV_ConvertString(va("Got %i %s Rounds", startammo[FIRE_PRIMARY], GetCapitalized(sAmmoType).c_str()));
             }
 
             gi.SendServerCommand(other->edict - g_entities, "print \"" HUD_MESSAGE_YELLOW "%s\n\"", sMessage.c_str());
