@@ -74,6 +74,14 @@ private:
     void   CheckJumpOverEdge(usercmd_t& botcmd);
     void   NewMove();
     Vector FixDeltaFromCollision(const Vector& delta);
+    void   CalculateBestFrontAvoidance(
+          const Vector& targetOrg,
+          float         maxDist,
+          const Vector& forward,
+          const Vector& right,
+          float&        bestFrac,
+          Vector&       bestPos
+      );
 
 private:
     SafePtr<Player>            controlledEntity;
@@ -159,10 +167,16 @@ private:
     BotRotation rotation;
 
     // States
-    int               m_iCuriousTime;
-    int               m_iAttackTime;
-    int               m_iConfirmTime;
-    int               m_iAttackStopAimTime;
+    int    m_iCuriousTime;
+    int    m_iAttackTime;
+    int    m_iAttackStopAimTime;
+    int    m_iLastBurstTime;
+    int    m_iLastSeenTime;
+    int    m_iLastUnseenTime;
+    int    m_iContinuousFireTime;
+    Vector m_vAimOffset;
+    int    m_iLastAimTime;
+
     Vector            m_vLastCuriousPos;
     Vector            m_vNewCuriousPos;
     Vector            m_vOldEnemyPos;
@@ -182,6 +196,7 @@ private:
 
     // Taunts
     int m_iNextTauntTime;
+    int m_iLastFireTime;
 
 private:
     DelegateHandle delegateHandle_gotKill;
@@ -195,6 +210,7 @@ private:
     void    UseWeaponWithAmmo(void);
 
     void CheckUse(void);
+    bool CheckWindows(void);
     void CheckValidWeapon(void);
 
     void State_DefaultBegin(void);
