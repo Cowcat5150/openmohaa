@@ -68,7 +68,7 @@ typedef enum channelType_e {
     CHANNEL_VALUE
 } channelType_t;
 
-channelType_t GetBoneChannelType(const char* name);
+channelType_t GetBoneChannelType(const char *name);
 
 #else
 

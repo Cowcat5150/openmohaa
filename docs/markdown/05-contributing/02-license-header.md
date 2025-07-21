@@ -1,6 +1,9 @@
+# Copyright header
+
+```cpp
 /*
 ===========================================================================
-Copyright (C) 2024 the OpenMoHAA team
+Copyright (C) yyyy the OpenMoHAA team
 
 This file is part of OpenMoHAA source code.
 
@@ -19,32 +22,6 @@ along with OpenMoHAA source code; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+```
 
-#pragma once
-
-class Script;
-
-class UILayout : public Listener
-{
-    str                m_filename;
-    Script            *m_script;
-    Stack<Script *>    m_scriptstack;
-    UIWidgetContainer *m_currentcontainer;
-    UIWidget          *m_currentwidget;
-    bool               m_bLoaded;
-
-public:
-    CLASS_PROTOTYPE(UILayout);
-
-private:
-    void BogusFunction(void);
-    void CreateWidgetContainer(Event *ev);
-    void ProcessCommands(bool bFullLoad);
-
-public:
-    UILayout();
-    UILayout(const char *filename);
-
-    void Load(const char *filename, bool bFullLoad);
-    int  ForceLoad(void);
-};
+Replace yyyy with the current year.
