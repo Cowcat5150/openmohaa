@@ -1,4 +1,4 @@
-if(NOT BUILD_CLIENT)
+if(NOT BUILD_CLIENT OR MORPHOS)
     return()
 endif()
 

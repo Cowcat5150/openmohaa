@@ -61,6 +61,24 @@ set(CLIENT_SOURCES
     ${CLIENT_PLATFORM_SOURCES}
 )
 
+if(MORPHOS) # No OpenAL
+list(FILTER CLIENT_SOURCES EXCLUDE REGEX "qal.c")
+list(FILTER CLIENT_SOURCES EXCLUDE REGEX "snd_dma_new.cpp")
+list(FILTER CLIENT_SOURCES EXCLUDE REGEX "snd_mem_new.cpp")
+list(FILTER CLIENT_SOURCES EXCLUDE REGEX "snd_miles_new.cpp")
+list(FILTER CLIENT_SOURCES EXCLUDE REGEX "snd_openal_new.cpp")
+list(FILTER CLIENT_SOURCES EXCLUDE REGEX "snd_info.cpp")
+list(APPEND CLIENT_SOURCES ${SOURCE_DIR}/client/snd_adpcm.c )
+list(APPEND CLIENT_SOURCES ${SOURCE_DIR}/client/snd_wavelet.c )
+list(APPEND CLIENT_SOURCES ${SOURCE_DIR}/client/snd_dma.c )
+list(APPEND CLIENT_SOURCES ${SOURCE_DIR}/client/snd_mem.c )
+list(APPEND CLIENT_SOURCES ${SOURCE_DIR}/client/snd_mix.c )
+list(APPEND CLIENT_SOURCES ${SOURCE_DIR}/client/snd_main.c )
+list(APPEND CLIENT_SOURCES ${SOURCE_DIR}/client/snd_openal.c )
+list(APPEND CLIENT_SOURCES ${SOURCE_DIR}/client/new/snd_main_new.cpp )
+list(APPEND CLIENT_SOURCES ${SOURCE_DIR}/sdl/sdl_snd.c )
+endif()
+
 # Gamespy
 list(APPEND CLIENT_SOURCES
 	${SOURCE_DIR}/gamespy/cl_gamespy.c
@@ -99,6 +117,10 @@ endif()
 if(USE_MUMBLE)
     list(APPEND CLIENT_DEFINITIONS USE_MUMBLE)
     list(APPEND CLIENT_LIBRARY_SOURCES ${SOURCE_DIR}/client/libmumblelink.c)
+endif()
+
+if(MORPHOS)
+    list(APPEND CLIENT_DEFINITIONS NO_MODERN_DMA)
 endif()
 
 list(APPEND CLIENT_BINARY_SOURCES

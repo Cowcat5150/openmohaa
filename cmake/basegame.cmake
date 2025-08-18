@@ -26,6 +26,13 @@ file(GLOB_RECURSE GAME_SOURCES
 	${SOURCE_DIR}/parser/parsetree.cpp
 )
 
+if (MORPHOS)
+set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS TRUE)
+set(CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS "-L/gg/usr/local/lib -ldll")
+list(APPEND CGAME_SOURCES ${SOURCE_DIR} ../morphos/cgame-dllglue.c )
+list(APPEND GAME_SOURCES ${SOURCE_DIR} ../morphos/game-dllglue.c )
+endif()
+
 # Compile lexer and grammar files
 
 if (FLEX_FOUND)

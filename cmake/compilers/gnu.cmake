@@ -4,7 +4,9 @@ if(NOT CMAKE_C_COMPILER_ID STREQUAL "GNU" AND NOT CMAKE_C_COMPILER_ID MATCHES "^
     return()
 endif()
 
+if(NOT MORPHOS)
 enable_language(ASM)
+endif()
 
 set(ASM_SOURCES
     ${SOURCE_DIR}/asm/snapvector.c
@@ -36,7 +38,7 @@ list(APPEND SERVER_LIBRARIES m)
 if(COMPILER_OUTPUT MATCHES "musl|freebsd|openbsd|netbsd")
     list(APPEND CLIENT_LIBRARIES execinfo)
     list(APPEND SERVER_LIBRARIES execinfo)
-elseif (NOT APPLE)
+elseif (NOT APPLE AND NOT MORPHOS)
     # For when using GLIBC versions older than 2.34
     list(APPEND CLIENT_LIBRARIES rt)
     list(APPEND SERVER_LIBRARIES rt)

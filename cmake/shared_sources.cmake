@@ -35,6 +35,11 @@ set(COMMON_SOURCES
     ${SOURCE_DIR}/gamespy/q_gamespy.c
 )
 
+if(MORPHOS)
+list(FILTER COMMON_SOURCES EXCLUDE REGEX "net_ip.c")
+list(APPEND COMMON_SOURCES "../morphos/net_ip-mos.c" )
+endif()
+
 disable_warnings(
     ${SOURCE_DIR}/qcommon/unzip.c
     ${SOURCE_DIR}/qcommon/ioapi.c
@@ -42,12 +47,23 @@ disable_warnings(
 
 add_git_dependency(${SOURCE_DIR}/qcommon/common.c)
 
+if(MORPHOS)
+set(SYSTEM_SOURCES
+    ${SOURCE_DIR}/sys/con_log.c
+    ${SOURCE_DIR}/sys/sys_autoupdater.c
+    ${SOURCE_DIR}/../morphos/sys/sys_main_morphos.c
+    ${SOURCE_DIR}/../morphos/sys/sys_morphos.c
+    ${SOURCE_DIR}/../morphos/sys/con_morphos.c
+    ${SYSTEM_PLATFORM_SOURCES}
+)
+else()
 set(SYSTEM_SOURCES
     ${SOURCE_DIR}/sys/con_log.c
     ${SOURCE_DIR}/sys/sys_autoupdater.c
     ${SOURCE_DIR}/sys/sys_main.c
     ${SYSTEM_PLATFORM_SOURCES}
 )
+endif()
 
 set(SERVER_SOURCES
     ${SOURCE_DIR}/server/sv_client.c
@@ -61,6 +77,14 @@ set(SERVER_SOURCES
     ${SOURCE_DIR}/server/sv_world.c
 )
 
+if(MORPHOS)
+list(APPEND SYSTEM_SOURCES
+    ${SOURCE_DIR}/../morphos/sys/new/sys_main_new_morphos.c
+    ${SOURCE_DIR}/../morphos/sys/new/sys_morphos_new.c
+    ${SOURCE_DIR}/sys/win_bounds.cpp
+    ${SOURCE_DIR}/sys/win_localization.cpp
+)
+else()
 list(APPEND SYSTEM_SOURCES
     ${SOURCE_DIR}/sys/new/sys_main_new.c
     ${SOURCE_DIR}/sys/win_bounds.cpp
@@ -68,6 +92,7 @@ list(APPEND SYSTEM_SOURCES
     ${SOURCE_DIR}/sys/sys_curl.c
     ${SOURCE_DIR}/sys/sys_update_checker.cpp
 )
+endif()
 
 # Append TIKI sources
 
