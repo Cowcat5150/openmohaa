@@ -482,6 +482,9 @@ typedef struct gameImport_s {
     void (*HudDrawString)(int info, const char *string);
     void (*HudDrawFont)(int info, const char *fontName);
     qboolean (*SanitizeName)(const char *oldName, char *newName, size_t bufferSize);
+    //
+    // New functions will start from here
+    //
 
     //
     // Added in OPM
@@ -491,14 +494,11 @@ typedef struct gameImport_s {
      * Print a message related to a client
      */
     void (*PrintfClient)(int clientNum, const char *fmt, ...);
-
     int (*pvssoundindex)(const char* name, int streamed);
+    void (*KickClientForReason)(int clientNum, const char *reason);
+    cvar_t *(*Cvar_Find)(const char *varName);
 
     cvar_t *fsDebug;
-
-    //
-    // New functions will start from here
-    //
 
 } game_import_t;
 
@@ -564,6 +564,14 @@ typedef struct gameExport_s {
     void (*DebugCircle)(float *org, float radius, float r, float g, float b, float alpha, qboolean horizontal);
     void (*SetFrameNumber)(int frameNumber);
     void (*SoundCallback)(int entNum, soundChannel_t channelNumber, const char *name);
+
+    //
+    // Added in OPM
+    //
+
+    /** Add more information related to game */
+    unsigned int (*GetNumSimulatedPlayers)();
+    const char * (*GetSimulatedPlayersSkill)();
 
     //
     // global variables shared between game and server

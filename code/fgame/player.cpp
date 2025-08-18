@@ -4261,18 +4261,20 @@ void Player::ClientInactivityTimer(void)
     }
 
     if (num_team_kills >= g_teamkillkick->integer) {
-        const str message = gi.LV_ConvertString("was removed from the server for killing too many teammates.");
+        //const str message = gi.LV_ConvertString("was removed from the server for killing too many teammates.");
 
         //
         // The player reached maximum team kills
         //
-        G_PrintToAllClients(va("%s %s\n", client->pers.netname, message.c_str()), 2);
+        //G_PrintToAllClients(va("%s %s\n", client->pers.netname, message.c_str()), 2);
+        
+        const str message = gi.LV_ConvertString("killing too many teammates.");
 
         if (Q_stricmp(Info_ValueForKey(client->pers.userinfo, "ip"), "localhost")) {
             //
             // Make sure to not kick the local host
             //
-            gi.DropClient(client->ps.clientNum, message.c_str());
+            gi.KickClientForReason(client->ps.clientNum, message.c_str());
         } else if (!m_bSpectator) {
             // if it's the host, put it back in spectator mode
             num_team_kills      = 0;
@@ -4307,7 +4309,7 @@ void Player::ClientInactivityTimer(void)
         const char *s = Info_ValueForKey(client->pers.userinfo, "ip");
 
         if (Q_stricmp(s, "localhost")) {
-            gi.DropClient(client->ps.clientNum, "was dropped for inactivity");
+            gi.KickClientForReason(client->ps.clientNum, "inactivity");
             return;
         }
 
@@ -11651,7 +11653,7 @@ qboolean Player::CheckCanSwitchTeam(teamtype_t team)
         gi.SendServerCommand(
             edict - g_entities,
             "print \"" HUD_MESSAGE_WHITE "%s %i %s\n\"",
-            gi.LV_ConvertString("Can not change teams again for another"),
+            gi.LV_ConvertString("Cannot change teams again for another"),
             seconds + 1,
             gi.LV_ConvertString("seconds")
         );
@@ -11675,14 +11677,13 @@ qboolean Player::CheckCanSwitchTeam(teamtype_t team)
 
             if (pNewTeam->m_players.NumObjects() > numTeamPlayers) {
                 const char *message = gi.LV_ConvertString(
-                    "That team has enough players. Choose the team that has the lowest number of players."
+                    "This team is full. Choose the team that has the lowest number of players."
                 );
 
-                gi.SendServerCommand(
-                    edict - g_entities, "print \"" HUD_MESSAGE_WHITE "%s\n\"", gi.LV_ConvertString(message)
-                );
-
+                gi.SendServerCommand(edict - g_entities, "print \"" HUD_MESSAGE_WHITE "%s\n\"", message);
                 gi.centerprintf(edict, message);
+
+                gi.PrintfClient(edict - g_entities, "cannot join a full team (%s)\n", pTeam->m_teamname.c_str());
                 return qfalse;
             }
         }

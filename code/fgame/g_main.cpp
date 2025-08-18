@@ -292,7 +292,11 @@ void G_InitGame(int levelTime, int randomSeed)
         game.maxentities = game.maxclients * 8;
     }
 
-    game.maxclients = maxclients->integer + sv_maxbots->integer;
+    game.maxclients = maxclients->integer;
+
+    if (g_gametype->integer != GT_SINGLE_PLAYER) {
+        game.maxclients += sv_maxbots->integer;
+    }
 
     L_InitEvents();
 
@@ -1674,6 +1678,9 @@ extern "C" game_export_t *GetGameAPI(game_import_t *import)
     globals.SoundCallback    = G_SoundCallback;
     globals.SpawnEntities    = G_SpawnEntities;
     globals.TIKI_Orientation = G_TIKI_Orientation;
+
+    globals.GetNumSimulatedPlayers   = G_GetNumBots;
+    globals.GetSimulatedPlayersSkill = G_GetBotSkill;
 
     return &globals;
 }

@@ -79,7 +79,6 @@ BotController::BotController()
     m_iNextTauntTime = 0;
 
     m_StateFlags = 0;
-    m_RunLabel.TrySetScript("global/bot_run.scr");
 }
 
 BotController::~BotController()
@@ -130,6 +129,8 @@ void BotController::UpdateBotStates(void)
         return;
     }
 
+    m_botCmd.serverTime = level.svsTime;
+
     if (!controlledEnt->client->pers.dm_primary[0]) {
         Event *event;
 
@@ -166,7 +167,6 @@ void BotController::UpdateBotStates(void)
     }
 
     m_botCmd.buttons |= BUTTON_RUN;
-    m_botCmd.serverTime = level.svsTime;
 
     m_botEyes.ofs[0]    = 0;
     m_botEyes.ofs[1]    = 0;

@@ -33,7 +33,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 static char        gamemode[128];
 static qboolean    gcdInitialized = qfalse;
-static qboolean    gcdValid       = qfalse;
 static qboolean    gsRunning      = qfalse;
 extern GSIACResult __GSIACResult;
 
@@ -171,8 +170,9 @@ static void basic_callback(char *outbuf, int maxlen, void *userdata)
 
 static void info_callback(char *outbuf, int maxlen, void *userdata)
 {
-    char     infostring[1024];
-    qboolean allowlean = qfalse;
+    char         infostring[1024];
+    qboolean     allowlean = qfalse;
+    unsigned int numBots;
 
     infostring[0] = 0;
     Info_SetValueForKey(infostring, "hostname", sv_hostname->string);
@@ -192,6 +192,20 @@ static void info_callback(char *outbuf, int maxlen, void *userdata)
     }
 
     Info_SetValueForKey(infostring, "allowlean", va("%i", allowlean));
+
+    // Added in OPM
+    //  Bot-specific information
+    //  `minPlayers` means if the number of real clients is below `minPlayers`,
+    //  then bots are spawned to fill the gap.
+    //  For the caller, the number of bots is calculated using: minPlayers - numPlayers. If numPlayers is above minPlayers then there are 0 bots.
+    numBots = ge->GetNumSimulatedPlayers();
+    if (numBots > 0) {
+        Info_SetValueForKey(infostring, "minplayers", va("%i", numBots + SV_NumClients()));
+    } else {
+        Info_SetValueForKey(infostring, "minplayers", "0");
+    }
+    Info_SetValueForKey(infostring, "botskill", ge->GetSimulatedPlayersSkill());
+
     if (strlen(infostring) < maxlen) {
         strcpy(outbuf, infostring);
     }
@@ -294,7 +308,7 @@ void SV_ProcessGamespyQueries()
 
     qr_process_queries(NULL);
 
-    if (gcdValid) {
+    if (gcdInitialized) {
         // in case the game supports gcd
         gcd_think();
     }
@@ -379,12 +393,8 @@ qboolean SV_InitGamespy()
     // this will set the GSI as available for cdkey authorization
     __GSIACResult = GSIACAvailable;
 
-    if (!gcdInitialized) {
-        if (gcd_game_id) {
-            gcd_init(gcd_game_id);
-            gcdValid = qtrue;
-        }
-
+    if (!gcdInitialized && gcd_game_id) {
+        gcd_init(gcd_game_id);
         gcdInitialized = qtrue;
     }
 
