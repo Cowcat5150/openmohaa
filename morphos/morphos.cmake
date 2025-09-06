@@ -1,4 +1,4 @@
-#cmake .. -DCMAKE_TOOLCHAIN_FILE=../morphos/morphos.cmake -DNO_MODERN_DMA=1
+#cmake .. -DCMAKE_TOOLCHAIN_FILE=../morphos/morphos.cmake -DBUILD_SERVER=OFF
 #ppc-morphos-strip openmohaa
 #ppc-morphos-strip code/client/cgame/cgame.so
 #ppc-morphos-strip code/server/fgame/game.so
