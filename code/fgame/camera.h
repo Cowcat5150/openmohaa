@@ -31,6 +31,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../corepp/container.h"
 #include "level.h"
 
+#undef bind // MorphOS
+
 #define CAMERA_SWITCHTIME 0.5f
 
 #define ORBIT             (1 << 0)

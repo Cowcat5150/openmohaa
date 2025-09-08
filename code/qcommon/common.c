@@ -1309,10 +1309,10 @@ int Com_EventLoop( void ) {
 				CL_CharEvent( ev.evValue );
 			break;
 			case SE_MOUSE:
-				CL_MouseEvent( ev.evValue, ev.evValue2 /*, ev.evTime */);
+				CL_MouseEvent( ev.evValue, ev.evValue2, ev.evTime );
 			break;
 			case SE_JOYSTICK_AXIS:
-				CL_JoystickEvent( ev.evValue, ev.evValue2 /*, ev.evTime */);
+				CL_JoystickEvent( ev.evValue, ev.evValue2, ev.evTime );
 			break;
 			case SE_CONSOLE:
 				Cbuf_AddText( (char *)ev.evPtr );

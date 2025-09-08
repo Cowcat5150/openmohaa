@@ -55,6 +55,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define scriptfiles sv_scriptfiles
 
+#undef Wait // MorphOS
+
 Event EV_ScriptThread_GetCvar
 (
     "getcvar",

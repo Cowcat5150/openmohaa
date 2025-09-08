@@ -32,6 +32,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "const_str.h"
 
+#undef Remove // MorphOS
+
 class Class;
 class Event;
 

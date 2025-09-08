@@ -28,6 +28,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "g_local.h"
 #include "../corepp/class.h"
 
+#undef Remove // MorphOS
+
 template<unsigned int cGrids, unsigned int cPoints>
 class cSpline : public Class
 {

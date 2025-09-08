@@ -432,7 +432,7 @@ void CL_SetMousePos( int x, int y )
 CL_MouseEvent
 =================
 */
-void CL_MouseEvent( int dx, int dy /*, int time */) {
+void CL_MouseEvent( int dx, int dy, int time ) {
 	if( in_guimouse )
 	{
 		cl.mousex += dx;
@@ -464,7 +464,7 @@ CL_JoystickEvent
 Joystick values stay set until changed
 =================
 */
-void CL_JoystickEvent( int axis, int value /*, int time */) {
+void CL_JoystickEvent( int axis, int value, int time ) {
 	if ( axis < 0 || axis >= MAX_JOYSTICK_AXIS ) {
 		Com_Error( ERR_DROP, "CL_JoystickEvent: bad axis %i", axis );
 	}
