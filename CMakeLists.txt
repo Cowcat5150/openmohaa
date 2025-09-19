@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.31)
+cmake_minimum_required(VERSION 3.25)
+cmake_policy(VERSION 3.31)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(identity)
@@ -81,4 +82,5 @@ if(NOT MORPHOS)
 include(launcher)
 endif()
 
+include(post_configure)
 #include(installer)
