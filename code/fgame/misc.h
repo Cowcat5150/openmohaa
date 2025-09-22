@@ -574,6 +574,9 @@ inline void FuncLadder::Archive(Archiver& arc)
     arc.ArchiveVector(&m_vFacingDir);
 }
 
+//
+// Added in 2.30
+//
 class InfoLandmark : public Listener
 {
 private:
@@ -588,4 +591,10 @@ public:
     InfoLandmark();
     void SetLandmarkName(Event *ev);
     void SetOrigin(Event *ev);
+
+    //
+    // Added in OPM
+    //
+    void GetLandmarkName(Event *ev);
+    void GetOrigin(Event *ev);
 };
