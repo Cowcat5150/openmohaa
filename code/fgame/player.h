@@ -294,7 +294,7 @@ private:
     ///
     bool  voted;
     int   votecount;
-    float m_fLastVoteTime;
+    float m_fAllowVoteTime;
     float m_fNextVoteOptionTime;
 
     float           m_fWeapSelectTime;
@@ -354,8 +354,8 @@ public:
     int   m_iInvulnerableTimeRemaining;
     float m_fInvulnerableTimeElapsed;
     float m_fSpawnTimeLeft;
-    bool  m_bWaitingForRespawn;
-    bool  m_bShouldRespawn;
+    bool  m_bRespawnWhenReady;
+    bool  m_bReadyToRespawn;
 
     //
     // Added in OPM
@@ -990,6 +990,9 @@ public:
     void VisionSetNaked(Event *ev);
 #endif
 
+    bool IsPrimaryWeaponValid() const;
+
+    void     PostAnimate() override;
     void     Postthink() override;
     void     GibEvent(Event *ev);
     qboolean canUse();
