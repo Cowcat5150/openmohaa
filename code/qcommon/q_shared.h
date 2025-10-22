@@ -77,9 +77,10 @@ extern "C" {
 // Note: An universal client is not currently possible without refactoring the network and the file system.
 //       Pak files must be reloaded on-the-fly depending on the server the client is connecting to.
 //
-#define HOMEPATH_NAME_UNIX		".openmohaa"
-#define HOMEPATH_NAME_WIN		"openmohaa"
-#define HOMEPATH_NAME_MACOSX	HOMEPATH_NAME_WIN
+ #define HOMEPATH_NAME_UNIX_LEGACY	".openmohaa"
+ #define HOMEPATH_NAME				"openmohaa"
+
+#define CONFIG_PREFIX			"opmconfig"
 
 #define CLIENT_WINDOW_TITLE		PRODUCT_NAME
 #define CLIENT_WINDOW_MIN_TITLE PRODUCT_NAME
@@ -312,6 +313,7 @@ typedef enum
 #endif
 
 #define	MAX_NAME_LENGTH		32		// max length of a client name
+#define	MAX_HOSTNAME_LENGTH	80		// max length of a host name
 
 // paramters for command buffer stuffing
 typedef enum {

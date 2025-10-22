@@ -530,7 +530,7 @@ static void R_ModeList_f( void )
 
 NOTE TTimo
 some thoughts about the screenshots system:
-screenshots get written in fs_homepath + fs_gamedir
+screenshots get written in fs_homedatapath + fs_gamedir
 vanilla q3 .. baseq3/screenshots/ *.tga
 team arena .. missionpack/screenshots/ *.tga
 
@@ -1858,7 +1858,7 @@ void RE_Shutdown( qboolean destroyWindow ) {
 */
 void RE_BeginRegistration(glconfig_t* glconfigOut) {
 
-    R_Init();
+    //R_Init();
 
     *glconfigOut = glConfig;
 
@@ -1873,6 +1873,8 @@ void RE_BeginRegistration(glconfig_t* glconfigOut) {
     //=========================
     R_LevelMarksFree();
     R_TerrainFree();
+
+	R_ClearWorld();
 
     R_InitLensFlare();
     R_LevelMarksInit();
@@ -1969,6 +1971,8 @@ refexport_t *GetRefAPI ( int apiVersion, refimport_t *rimp ) {
 			REF_API_VERSION, apiVersion );
 		return NULL;
 	}
+
+    R_Init();
 
 	// the RE_ functions are Renderer Entry points
 
