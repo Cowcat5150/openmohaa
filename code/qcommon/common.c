@@ -150,6 +150,7 @@ qboolean	com_fullyInitialized = qfalse;
 qboolean	com_gameRestarting = qfalse;
 qboolean	com_gameClientRestarting = qfalse;
 qboolean	com_gotOriginalConfig = qfalse;
+qboolean    com_firstConfig = qfalse;
 
 char	com_errorMessage[MAXPRINTMSG];
 
@@ -1795,7 +1796,7 @@ void Com_Init( char *commandLine ) {
 	// override anything from the config files with command line args
 	Com_StartupVariable( "config" );
 
-	config = Cvar_Get( "config", "omconfig.cfg", 0 );
+	config = Cvar_Get( "config", configname, 0 );
 
 	if( strlen( config->string ) > 1 )
 	{
@@ -1818,15 +1819,23 @@ void Com_Init( char *commandLine ) {
 	Cvar_Set( "config", configname );
 	Com_Printf( "Config: %s\n", configname );
 
+    // Look if a config file exists whether in main or expansion
 	configExists = Com_ConfigExists(configname);
 
-	if ( !configExists ) {
+	if ( configExists ) {
+		// Look if the config specific to the game exists
+		com_firstConfig = !FS_FileExists_HomeConfig(va("configs/%s", configname));
+
+		Cbuf_AddText( va( "exec configs/%s\n", configname ) );
+	} else if ( Com_ConfigExists( "unnamedsoldier.cfg" ) ) {
 		Com_Printf( "The config file '%s' doesn't exist, using unnamedsoldier.cfg as a template\n", configname );
+		// Grab the config file from the original game
 		Cbuf_AddText( "exec configs/unnamedsoldier.cfg\n" );
 		com_gotOriginalConfig = qtrue;
 	} else {
-		Cbuf_AddText( va( "exec configs/%s\n", configname ) );
-	}
+        // Neither original or home config exist
+		com_firstConfig = qtrue;
+    }
 
 	if( Com_SafeMode() )
 	{
@@ -2325,11 +2334,18 @@ void Com_Frame( void ) {
 
     msec = com_frameTime - lastTime;
 
+#ifndef DEDICATED
 	if (com_dedicated->integer || CL_FinishedIntro())
 	{
 		Cbuf_Execute(0);
 		SV_CheckSaveGame();
 	}
+#else
+	// Fixed in OPM
+	//   On dedicated servers, the client part that runs buffered commands is never run.
+	//   Therefore, the delta time has to be specified here for wait commands to work
+	Cbuf_Execute(msec);
+#endif
 
     if (com_altivec->modified)
     {
