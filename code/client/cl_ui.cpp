@@ -5535,12 +5535,7 @@ void UI_BeginLoadResource(void)
 #if 0
     clock_t time = clock();
 
-    #if !defined(__MORPHOS__)
     startCountHigh = time >> 32;
-    #else
-    startCountHigh = (uint64_t)time >> 32; // test Cowcat
-    #endif
-    
     startCountLow  = time;
 #endif
 
