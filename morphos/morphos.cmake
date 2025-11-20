@@ -20,7 +20,7 @@ set(CMAKE_C_COMPILER ${TOOLCHAIN_PATH}/bin/ppc-morphos-gcc -noixemul -fno-asynch
 set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PATH}/bin/ppc-morphos-g++ -noixemul -fpermissive)
 set(CMAKE_CPP_COMPILER ${TOOLCHAIN_PATH}/bin/ppc-morphos-cpp)
 set(CMAKE_ASM_COMPILER ${TOOLCHAIN_PATH}/bin/ppc.morphos-gcc -c)
-set(CMAKE_VERBOSE_MAKEFILE TRUE)
+#set(CMAKE_VERBOSE_MAKEFILE TRUE)
 
 set(CMAKE_CXX_LINK_EXECUTABLE "<CMAKE_CXX_COMPILER> <FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES> -L/gg/usr/local/lib -lSDL2 -lGL -ldll")
 
