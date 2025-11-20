@@ -704,7 +704,8 @@ Event EV_Player_ModifyHeight
     "change the maximum height of the player\ncan specify 'stand', 'duck' or 'prone'.",
     EV_NORMAL
 );
-Event EV_Player_ModifyHeightFloat // Added in 2.40
+ // Added in 2.40
+Event EV_Player_ModifyHeightFloat
 (
     "modheightfloat",
      EV_DEFAULT,
@@ -1654,6 +1655,7 @@ Event EV_Player_Userinfo
     EV_GETTER
 );
 
+#ifdef OPM_FEATURES
 Event EV_Player_ViewModelGetAnim
 (
     "viewmodelgetanim",
@@ -1682,7 +1684,6 @@ Event EV_Player_ViewModelAnimValid
     EV_RETURN
 );
 
-#ifdef OPM_FEATURES
 Event EV_Player_Earthquake
 (
     "earthquake2",
@@ -1849,7 +1850,10 @@ CLASS_DECLARATION(Sentient, Player, "player") {
     {&EV_Player_ResetHaveItem,            &Player::ResetHaveItem                },
     {&EV_Show,                            &Player::PlayerShowModel              },
     {&EV_Player_ModifyHeight,             &Player::ModifyHeight                 },
+
+    // Added in 2.40
     {&EV_Player_ModifyHeightFloat,        &Player::ModifyHeightFloat            },
+
     {&EV_Player_SetMovePosFlags,          &Player::SetMovePosFlags              },
     {&EV_Player_GetPosition,              &Player::GetPositionForScript         },
     {&EV_Player_GetMovement,              &Player::GetMovementForScript         },
@@ -1951,10 +1955,10 @@ CLASS_DECLARATION(Sentient, Player, "player") {
     {&EV_Player_Spectator,                &Player::Spectator                    },
     {&EV_Player_StopLocalSound,           &Player::StopLocalSound               },
     {&EV_Player_Userinfo,                 &Player::Userinfo                     },
+#ifdef OPM_FEATURES
     {&EV_Player_ViewModelAnimFinished,    &Player::EventGetViewModelAnimFinished},
     {&EV_Player_ViewModelGetAnim,         &Player::EventGetViewModelAnim        },
     {&EV_Player_ViewModelAnimValid,       &Player::EventGetViewModelAnimValid   },
-#ifdef OPM_FEATURES
     {&EV_Player_Earthquake,               &Player::EventEarthquake              },
     {&EV_Player_SetClientFlag,            &Player::SetClientFlag                },
     {&EV_Player_SetEntityShader,          &Player::SetEntityShader              },
@@ -2193,11 +2197,11 @@ Player::Player()
         speed_multiplier[i] = 1.0f;
     }
 
+#ifdef OPM_FEATURES
     m_fpsTiki  = NULL;
     animDoneVM = true;
     m_fVMAtime = 0;
 
-#ifdef OPM_FEATURES
     m_bShowingHint = false;
 #endif
 }
@@ -2559,7 +2563,9 @@ void Player::InitModel(void)
         }
     }
 
+#ifdef OPM_FEATURES
     InitModelFps();
+#endif
 }
 
 void Player::InitPhysics(void)
@@ -4009,19 +4015,21 @@ void Player::ClientMove(usercmd_t *ucmd)
     }
 
     if (g_protocol >= protocol_e::PROTOCOL_MOHTA_MIN) {
-        if (maxs.z == 54.0f || maxs.z == 60.0f) {
+        // Changed in 2.30
+        //  Only crouch or jump start is possible
+        if (maxs.z == CROUCH_MAXS_Z) {
             client->ps.pm_flags |= PMF_DUCKED;
         } else if (viewheight == JUMP_START_VIEWHEIGHT) {
             client->ps.pm_flags |= PMF_VIEW_JUMP_START;
         }
     } else {
-        if (maxs.z == 60.0f) {
+        if (maxs.z == CROUCH_RUN_MAXS_Z) {
             client->ps.pm_flags |= PMF_DUCKED;
-        } else if (maxs.z == 54.0f) {
+        } else if (maxs.z == CROUCH_MAXS_Z) {
             client->ps.pm_flags |= PMF_DUCKED | PMF_VIEW_PRONE;
-        } else if (maxs.z == 20.0f) {
+        } else if (maxs.z == PRONE_MAXS_Z) {
             client->ps.pm_flags |= PMF_VIEW_PRONE;
-        } else if (maxs.z == 53.0f) {
+        } else if (maxs.z == (CROUCH_MAXS_Z-1)) {
             client->ps.pm_flags |= PMF_VIEW_DUCK_RUN;
         } else if (viewheight == JUMP_START_VIEWHEIGHT) {
             client->ps.pm_flags |= PMF_VIEW_JUMP_START;
@@ -4794,7 +4802,8 @@ void Player::Think(void)
                 }
             } else {
                 if (g_protocol >= protocol_e::PROTOCOL_MOHTA_MIN) {
-                    // Since 2.0, use = clear spectator
+                    // Changed in 2.0
+                    //  Use = clear spectator
                     if (m_iPlayerSpectating && (server_new_buttons & BUTTON_USE)) {
                         m_iPlayerSpectating = 0;
                     }
@@ -4960,10 +4969,12 @@ void Player::Think(void)
         edict->s.eFlags &= ~EF_PLAYER_TALKING;
     }
 
+#ifdef OPM_FEATURES
     //
     // Added in OPM
     //
     ThinkFPS();
+#endif
 
     server_new_buttons = 0;
 
@@ -5770,7 +5781,7 @@ void Player::DropCurrentWeapon(Event *ev)
         //  Allow dropping carryable turrets even though they are item
         && !weapon->isSubclassOf(CarryableTurret)) {
         if (weapon->getName() == "Binoculars") {
-            // Added in 2.11
+            // Added in 2.11-final
             //  Prevent dropping the binoculars
             return;
         }
@@ -6119,7 +6130,8 @@ void Player::ProcessPmoveEvents(int event)
         }
 
         if (g_protocol >= protocol_e::PROTOCOL_MOHTA_MIN) {
-            // since 2.0, remove a percentage of the health
+            // Changed in 2.0
+            //  Remove a percentage of the health
             damage = damage * (max_health / 100.0);
         }
         if (g_gametype->integer == GT_SINGLE_PLAYER || !DM_FLAG(DF_NO_FALLING)) {
@@ -6298,7 +6310,9 @@ void Player::DamageFeedback(void)
     int    animnum;
 
     // if we are dead, don't setup any feedback
-    if (IsDead()) {
+    // Fixed in OPM
+    //  Also clear for spectators
+    if (IsDead() || IsSpectator()) {
         damage_count = 0;
         damage_blood = 0;
         damage_alpha = 0;
@@ -6368,7 +6382,8 @@ void Player::DamageFeedback(void)
 
     if (g_target_game >= target_game_e::TG_MOHTA) {
         //
-        // Since 2.0: Try to find and play pain animation
+        // Added in 2.0
+        //  try to find and play pain animation
         //
         if (getMoveType() == MOVETYPE_PORTABLE_TURRET) {
             // use mg42 pain animation
@@ -8311,29 +8326,29 @@ void Player::ModifyHeight(Event *ev)
 
     if (!height.icmp("stand")) {
         viewheight   = DEFAULT_VIEWHEIGHT;
-        maxs.z       = 94.0f;
+        maxs.z       = MAXS_Z;
         m_bHasJumped = false;
     } else if (!height.icmp("jumpstart")) {
         if (g_protocol < protocol_e::PROTOCOL_MOHTA_MIN) {
             viewheight = JUMP_START_VIEWHEIGHT;
         }
-        maxs.z = 94.0f;
+        maxs.z = MAXS_Z;
     } else if (!height.icmp("duck")) {
         viewheight = CROUCH_VIEWHEIGHT;
-        maxs.z     = 54.0f;
+        maxs.z     = CROUCH_MAXS_Z;
     } else if (!height.icmp("duckrun")) {
         viewheight = CROUCH_RUN_VIEWHEIGHT;
-        maxs.z     = 60.0f;
+        maxs.z     = CROUCH_RUN_MAXS_Z;
     } else if (!height.icmp("prone")) {
         //
         // Added in OPM
         //  (prone)
         viewheight = PRONE_VIEWHEIGHT;
-        maxs.z     = 20.0f;
+        maxs.z     = PRONE_MAXS_Z;
     } else {
         gi.Printf("Unknown modheight '%s' defaulting to stand\n", height.c_str());
         viewheight = DEFAULT_VIEWHEIGHT;
-        maxs.z     = 94.0f;
+        maxs.z     = MAXS_Z;
     }
 }
 
@@ -8349,14 +8364,14 @@ void Player::ModifyHeightFloat(Event *ev)
 
     viewheight = height;
 
-    if (max_z >= 94.0) {
-        max_z = 94.0;
-    } else if (max_z >= 74.0 && max_z < 94.0) {
-        max_z = 54.0;
-    } else if (max_z >= 30.0 && max_z < 54.0) {
-        max_z = 20.0;
-    } else if (max_z <= 20.0) {
-        max_z = 20.0;
+    if (max_z >= MAXS_Z) {
+        max_z = MAXS_Z;
+    } else if (max_z >= 74.0 && max_z < MAXS_Z) {
+        max_z = CROUCH_MAXS_Z;
+    } else if (max_z >= 30.0 && max_z < CROUCH_MAXS_Z) {
+        max_z = PRONE_MAXS_Z;
+    } else if (max_z <= PRONE_MAXS_Z) {
+        max_z = PRONE_MAXS_Z;
     }
 
     maxs.z = max_z;
@@ -9258,6 +9273,11 @@ void Player::Spectator(void)
 
     RemoveFromVehiclesAndTurrets();
 
+    // Added in OPM
+    //  Prevent spectators from dying or dropping items
+    CancelEventsOfType(EV_Player_DMDeathDrop);
+    CancelEventsOfType(EV_Player_Dead);
+
     m_bSpectator        = !m_bTempSpectator;
     m_iPlayerSpectating = 0;
     takedamage          = DAMAGE_NO;
@@ -9267,8 +9287,16 @@ void Player::Spectator(void)
     client->ps.feetfalling = 0;
     movecontrol            = MOVECONTROL_USER;
     client->ps.pm_flags |= PMF_SPECTATING;
+    // Added in OPM
+    //  Remove the dead flag from the entity
+    edict->s.eFlags &= ~EF_DEAD;
 
-    EvaluateState(statemap_Torso->FindState("STAND"), statemap_Legs->FindState("STAND"));
+    // Fixed in OPM
+    //  Rebuild the state table instead of switching to STAND.
+    //  Switching to a new state involves processing exit commands such as "dead",
+    //  which would cause the spectator to die.
+    LoadStateTable();
+    //EvaluateState(statemap_Torso->FindState("STAND"), statemap_Legs->FindState("STAND"));
 
     setSolidType(SOLID_NOT);
     setMoveType(MOVETYPE_NOCLIP);
@@ -9519,16 +9547,10 @@ void Player::Join_DM_Team(Event *ev)
     RemoveFromVehiclesAndTurrets();
 
     //
-    // Since 2.0: Remove projectiles that the player own
+    // Added in 2.0
+    //  Remove projectiles that the player own
     //
-    for (ent = G_NextEntity(NULL); ent; ent = G_NextEntity(ent)) {
-        // Fixed in OPM
-        //  2.0 accidentally use the player's ownerNum which is always ENTITYNUM_NONE.
-        //  It causes projectiles with no owner to be deleted.
-        if (ent->IsSubclassOfProjectile() && ent->edict->r.ownerNum == entnum) {
-            ent->PostEvent(EV_Remove, 0);
-        }
-    }
+    RemoveOwnedProjectiles();
 
     if (IsPrimaryWeaponValid()) {
         if (IsSpectator()) {
@@ -11803,6 +11825,7 @@ qboolean Player::ViewModelAnim(str anim, qboolean force_restart, qboolean bFullA
         weapon = newActiveWeapon.weapon;
     }
 
+#ifdef OPM_FEATURES
     if (weapon) {
         m_sVMAcurrent = GetItemPrefix(weapon->getName()) + str("_") + anim;
     } else {
@@ -11818,6 +11841,7 @@ qboolean Player::ViewModelAnim(str anim, qboolean force_restart, qboolean bFullA
     animDoneVM = false;
 
     m_fVMAtime = 0;
+#endif
 
     return true;
 }
@@ -12214,6 +12238,20 @@ void Player::Spawned(void)
 
     scriptDelegate_spawned.Trigger(this, *ev);
     scriptedEvents[SE_SPAWN].Trigger(ev);
+}
+
+void Player::RemoveOwnedProjectiles()
+{
+    Entity *ent;
+
+    for (ent = G_NextEntity(NULL); ent; ent = G_NextEntity(ent)) {
+        // Fixed in OPM
+        //  2.0 accidentally use the player's ownerNum which is always ENTITYNUM_NONE.
+        //  It causes projectiles with no owner to be deleted.
+        if (ent->IsSubclassOfProjectile() && ent->edict->r.ownerNum == entnum) {
+            ent->PostEvent(EV_Remove, 0);
+        }
+    }
 }
 
 void Player::AddKills(int num)
@@ -12837,6 +12875,8 @@ int Player::GetNumDeaths(void) const
     return num_deaths;
 }
 
+#ifdef OPM_FEATURES
+
 void Player::InitModelFps(void)
 {
     char  model_name[MAX_STRING_TOKENS];
@@ -12928,8 +12968,6 @@ void Player::EventGetViewModelAnimValid(Event *ev)
         ev->AddInteger(1);
     }
 }
-
-#ifdef OPM_FEATURES
 
 void Player::EventEarthquake(Event *ev)
 {

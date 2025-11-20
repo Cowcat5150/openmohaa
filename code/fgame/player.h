@@ -368,6 +368,7 @@ public:
     bool              m_bConnected;
     str               m_lastcommand;
 
+#ifdef OPM_FEATURES
     //
     // View model animation
     //
@@ -377,6 +378,7 @@ public:
     str                 m_sVMcurrent;
     float               m_fVMAtime;
     dtiki_t            *m_fpsTiki;
+#endif
 
 private:
     int m_iInstantMessageTime;
@@ -504,8 +506,10 @@ public:
     //====
     qboolean CondClientCommand(Conditional& condition);
     qboolean CondVariable(Conditional& condition);
+#ifdef OPM_FEATURES
     qboolean CondAnimDoneVM(Conditional& condition);
     qboolean CondVMAnim(Conditional& condition);
+#endif
     //====
 
     // movecontrol functions
@@ -781,8 +785,11 @@ public:
     void PlayerShowModel(Event *ev);
     void showModel(void) override;
     void ResetHaveItem(Event *ev);
+
     void ModifyHeight(Event *ev);
-    void ModifyHeightFloat(Event *ev); // Added in mohaab 2.40
+     // Added in 2.40
+    void ModifyHeightFloat(Event *ev);
+
     void SetMovePosFlags(Event *ev);
     void GetPositionForScript(Event *ev);
     void GetMovementForScript(Event *ev);
@@ -938,6 +945,8 @@ public:
     qboolean     ViewModelAnim(str anim, qboolean force_restart, qboolean bFullAnim);
     virtual void Spawned(void);
 
+    void RemoveOwnedProjectiles();
+
     void AddDeaths(Event *ev);
     void AdminRights(Event *ev);
     void BindWeap(Event *ev);
@@ -973,13 +982,13 @@ public:
     void StopLocalSound(Event *ev);
     void Userinfo(Event *ev);
 
+#ifdef OPM_FEATURES
     void InitModelFps();
     void ThinkFPS();
     void EventGetViewModelAnim(Event *ev);
     void EventGetViewModelAnimFinished(Event *ev);
     void EventGetViewModelAnimValid(Event *ev);
 
-#ifdef OPM_FEATURES
     void EventEarthquake(Event *ev);
     void SetClientFlag(Event *ev);
     void SetEntityShader(Event *ev);
@@ -1240,12 +1249,14 @@ inline void Player::Archive(Archiver& arc)
         arc.ArchiveFloat(&speed_multiplier[i]);
     }
 
+#ifdef OPM_FEATURES
     if (arc.Loading()) {
         InitModelFps();
     }
 
     arc.ArchiveBool(&animDoneVM);
     arc.ArchiveFloat(&m_fVMAtime);
+#endif
 }
 
 inline Camera *Player::CurrentCamera(void)

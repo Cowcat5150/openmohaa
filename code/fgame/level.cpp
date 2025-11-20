@@ -1568,8 +1568,24 @@ void Level::SetMap(const char *themapname)
 
     m_mapscript      = "maps/" + level_name + ".scr";
     m_precachescript = "maps/" + level_name + "_precache.scr";
-    m_pathfile       = "maps/" + level_name + ".pth";
-    m_mapfile        = "maps/" + level_name + ".bsp";
+
+    //
+    // Setup the map file names
+    //
+    m_pathfile       = "maps/" + mapname + ".pth";
+
+    // Changed in 2.0
+    //  The filename must be set correctly when using a non-large lightmap
+    m_mapfile = "maps/" + mapname;
+    if (G_UseLargeLightmap(m_mapfile)) {
+        m_mapfile += ".bsp";
+    } else {
+        m_mapfile += "_sml.bsp";
+    }
+
+    // Added in 2.30
+    //  Store the map filename in a variable
+    gi.cvar_set("mapfilename", m_mapfile.c_str());
 }
 
 void Level::LoadAllScripts(const char *name, const char *extension)
@@ -1633,6 +1649,12 @@ void Level::Precache(void)
             if (!Q_stricmpn(filename, "allied_", 7) || !Q_stricmpn(filename, "american_", 9)
                 || !Q_stricmpn(filename, "german_", 7) || !Q_stricmpn(filename, "IT_", 3)
                 || !Q_stricmpn(filename, "SC_", 3)) {
+                
+                if (filelen >= 8 && !Q_stricmp(filename + filelen - 8, "_fps.tik")) {
+                    // Ignore FPS models
+                    continue;
+                }
+
                 CacheResource(va("models/player/%s", filename));
             }
         }

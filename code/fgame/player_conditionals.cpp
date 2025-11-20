@@ -1605,13 +1605,13 @@ qboolean Player::CondCheckHeight(Conditional& condition)
     trace_t trace;
 
     if (!sHeight.icmp("stand")) {
-        fHeight = 94.0f;
+        fHeight = MAXS_Z;
     } else if (!sHeight.icmp("duckrun")) {
-        fHeight = 60.0f;
+        fHeight = CROUCH_RUN_MAXS_Z;
     } else if (!sHeight.icmp("duck")) {
-        fHeight = 54.0f;
+        fHeight = CROUCH_MAXS_Z;
     } else if (!sHeight.icmp("prone")) {
-        fHeight = 20.0f;
+        fHeight = PRONE_MAXS_Z;
     } else {
         fHeight = atoi(sHeight.c_str());
     }
@@ -1899,6 +1899,8 @@ qboolean Player::CondVariable(Conditional& condition)
     return qtrue;
 }
 
+#ifdef OPM_FEATURES
+
 qboolean Player::CondAnimDoneVM(Conditional& condition)
 {
     return animDoneVM;
@@ -1908,6 +1910,8 @@ qboolean Player::CondVMAnim(Conditional& condition)
 {
     return condition.getParm(1) == m_sVMcurrent;
 }
+
+#endif
 
 CLASS_DECLARATION(Class, Conditional, NULL) {
     {NULL, NULL}
@@ -2037,8 +2041,10 @@ Condition<Player> Player::m_conditions[] = {
     {"CLIENT_COMMAND",                  &Player::CondClientCommand           },
     {"VAR_OPERATOR",                    &Player::CondVariable                },
 
+#ifdef OPM_FEATURES
     // View model animation
     {"ANIMDONE_VM",                     &Player::CondAnimDoneVM              },
     {"IS_VM_ANIM",                      &Player::CondVMAnim                  },
+#endif
     {NULL,                              NULL                                 },
 };
