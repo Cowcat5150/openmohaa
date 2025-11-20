@@ -1,7 +1,7 @@
 #cmake .. -DCMAKE_TOOLCHAIN_FILE=../morphos/morphos.cmake -DBUILD_SERVER=OFF
-#ppc-morphos-strip openmohaa
-#ppc-morphos-strip code/client/cgame/cgame.so
-#ppc-morphos-strip code/server/fgame/game.so
+#ppc-morphos-strip Release/openmohaa
+#ppc-morphos-strip Release/cgame.so
+#ppc-morphos-strip Release/game.so
 
 set(TOOLCHAIN_OS MorphOS)
 set(TOOLCHAIN_SYSTEM_INFO_FILE Platform/${TOOLCHAIN_OS})
@@ -20,7 +20,7 @@ set(CMAKE_C_COMPILER ${TOOLCHAIN_PATH}/bin/ppc-morphos-gcc -noixemul -fno-asynch
 set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PATH}/bin/ppc-morphos-g++ -noixemul -fpermissive)
 set(CMAKE_CPP_COMPILER ${TOOLCHAIN_PATH}/bin/ppc-morphos-cpp)
 set(CMAKE_ASM_COMPILER ${TOOLCHAIN_PATH}/bin/ppc.morphos-gcc -c)
-#set(CMAKE_VERBOSE_MAKEFILE TRUE)
+set(CMAKE_VERBOSE_MAKEFILE TRUE)
 
 set(CMAKE_CXX_LINK_EXECUTABLE "<CMAKE_CXX_COMPILER> <FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES> -L/gg/usr/local/lib -lSDL2 -lGL -ldll")
 
