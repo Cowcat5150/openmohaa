@@ -1031,7 +1031,7 @@ typedef struct {
 	// OPENMOHAA-specific stuff
 	//
 
-    qboolean	isPortalSky;		// since 2.0 whether or not this view is a portal sky
+    qboolean	isPortalSky;		// added in 2.0 - whether or not this view is a portal sky
     depthfog_t	fog;
     float		farplane_distance;
     float		farplane_bias; // added in 2.0
@@ -3039,6 +3039,7 @@ void Draw_TrianglePic(const vec2_t vPoints[3], const vec2_t vTexCoords[3], qhand
 void DrawBox(float x, float y, float w, float h);
 void AddBox(float x, float y, float w, float h);
 void Set2DWindow(int x, int y, int w, int h, float left, float right, float bottom, float top, float n, float f);
+void Set2DInitialShaderTime(float startTime);
 void RE_Scissor(int x, int y, int width, int height);
 void DrawLineLoop(const vec2_t* points, int count, int stipple_factor, int stipple_mask);
 void RE_StretchRaw2(int x, int y, int w, int h, int cols, int rows, int components, const byte* data);

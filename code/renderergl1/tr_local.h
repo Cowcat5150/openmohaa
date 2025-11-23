@@ -737,7 +737,7 @@ typedef struct {
 	vec3_t		pvsOrigin;			// may be different than or.origin for portals
 	qboolean	isPortal;			// true if this view is through a portal
 	qboolean	isMirror;			// the portal is a mirror, invert the face culling
-    qboolean	isPortalSky;		// since 2.0 whether or not this view is a portal sky
+    qboolean	isPortalSky;		// added in 2.0 - whether or not this view is a portal sky
 	int			frameSceneNum;		// copied from tr.frameSceneNum
 	int			frameCount;			// copied from tr.frameCount
 	cplane_t	portalPlane;		// clip anything behind this if mirroring
@@ -1764,6 +1764,10 @@ void Draw_TrianglePic(const vec2_t vPoints[3], const vec2_t vTexCoords[3], qhand
 void DrawBox(float x, float y, float w, float h);
 void AddBox(float x, float y, float w, float h);
 void Set2DWindow(int x, int y, int w, int h, float left, float right, float bottom, float top, float n, float f);
+
+// Added in OPM
+void Set2DInitialShaderTime(float startTime);
+
 void RE_Scissor(int x, int y, int width, int height);
 void DrawLineLoop(const vec2_t* points, int count, int stipple_factor, int stipple_mask);
 void RE_StretchRaw(int x, int y, int w, int h, int cols, int rows, int components, const byte* data);
