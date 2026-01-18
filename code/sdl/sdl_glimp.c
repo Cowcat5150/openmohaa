@@ -413,7 +413,11 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 	int samples;
 	int i = 0;
 	SDL_Surface *icon = NULL;
+	#if (__MORPHOS__)
+	Uint32 flags = SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL;
+	#else
 	Uint32 flags = SDL_WINDOW_HIDDEN | SDL_WINDOW_OPENGL;
+	#endif
 	SDL_DisplayMode desktopMode;
 	int display = 0;
 	int x = SDL_WINDOWPOS_UNDEFINED, y = SDL_WINDOWPOS_UNDEFINED;
