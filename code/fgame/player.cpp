@@ -53,6 +53,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "vehicleturret.h"
 #include "portableturret.h"
 #include "fixedturret.h"
+#include "clientvote.h"
 
 const Vector power_color(0.0, 1.0, 0.0);
 const Vector acolor(1.0, 1.0, 1.0);
@@ -423,13 +424,15 @@ Event EV_Player_KillEnt
     "Kills the specified entity.",
     EV_NORMAL
 );
+// Changed in OPM
+//  Allow including/excluding sub-classes
 Event EV_Player_KillClass
 (
     "killclass",
     EV_CHEAT,
-    "sI",
-    "classname except_entity_number",
-    "Kills all of the entities in the specified class.",
+    "sIB",
+    "classname except_entity_number include_subclasses",
+    "Kills all of the entities in the specified class. Kills subclasses by default.",
     EV_NORMAL
 );
 Event EV_Player_RemoveEnt
@@ -441,13 +444,15 @@ Event EV_Player_RemoveEnt
     "Removes the specified entity.",
     EV_NORMAL
 );
+// Changed in OPM
+//  Allow including/excluding sub-classes
 Event EV_Player_RemoveClass
 (
     "removeclass",
     EV_CHEAT,
-    "sI",
-    "classname except_entity_number",
-    "Removes all of the entities in the specified class.",
+    "sIB",
+    "classname except_entity_number include_subclasses",
+    "Removes all of the entities in the specified class. Removes sub-classes by default.",
     EV_NORMAL
 );
 Event EV_Player_Jump
@@ -2045,6 +2050,8 @@ Player::Player()
 
     m_iInstantMessageTime = 0;
     m_iTextChatTime       = 0;
+
+    voteUpload = NULL;
     //====
 
     if (LoadingSavegame) {
@@ -2235,6 +2242,10 @@ Player::~Player()
     //  Remove the player at destructor
     if (g_gametype->integer != GT_SINGLE_PLAYER && dmManager.PlayerCount()) {
         dmManager.RemovePlayer(this);
+    }
+
+    if (voteUpload) {
+        delete voteUpload;
     }
 
     entflags &= ~ECF_PLAYER;
@@ -3583,7 +3594,9 @@ void Player::GetMoveInfo(pmove_t *pm)
 {
     moveresult = pm->moveresult;
 
-    if (!deadflag || (g_gametype->integer != GT_SINGLE_PLAYER && IsSpectator())) {
+    // Changed in OPM
+    //  When dead, allow the player to rotate in noclip mode
+    if ((deadflag == DEAD_NO || getMoveType() == MOVETYPE_NOCLIP) || (g_gametype->integer != GT_SINGLE_PLAYER && IsSpectator())) {
         v_angle[0] = pm->ps->viewangles[0];
         v_angle[1] = pm->ps->viewangles[1];
         v_angle[2] = pm->ps->viewangles[2];
@@ -4623,6 +4636,17 @@ void Player::ClientThink(void)
         client->cmd_angles[1]  = SHORT2ANGLE(current_ucmd->angles[1]);
         client->cmd_angles[2]  = SHORT2ANGLE(current_ucmd->angles[2]);
         client->ps.commandTime = current_ucmd->serverTime;
+    }
+
+    if (voteUpload) {
+        //
+        // Process pending vote upload
+        //
+        if (voteUpload->ClientThink()) {
+            // Finished sending
+            delete voteUpload;
+            voteUpload = NULL;
+        }
     }
 }
 
@@ -10145,7 +10169,12 @@ void Player::RetrieveVoteOptions(Event *ev)
         gi.SendServerCommand(edict - g_entities, "vo2 \"\"\n");
     } else {
         m_fNextVoteOptionTime = level.time + 2.0;
-        level.SendVoteOptionsFile(edict);
+        //level.SendVoteOptionsFile(edict);
+        // Changed in OPM
+        //  Use an improved way of sending vote options for unlimited length
+
+        voteUpload = new VoteUpload(edict - g_entities);
+        voteUpload->StartSending(level.GetVoteOptions());
     }
 }
 

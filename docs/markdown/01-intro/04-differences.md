@@ -372,6 +372,7 @@ Enable this feature with `set sv_netoptimize 2`.
 - Fixed crash when increasing `sv_maxclients` and restarting
 - Fixed a crash related to invalid turret for vehicles
 - Fixed a crash related to invalid entity being attached to vehicles
+- Fixed a rare glitch causing the player to be teleported to (0,0,0) and be stuck
 - Fixed crashes related to scripts passing an invalid entity
 - Fixed grenade crash bug
 - Fixed grenade spectator charge bug
@@ -382,6 +383,7 @@ Enable this feature with `set sv_netoptimize 2`.
 - Fixed memory leaks issues in long matches
 - Fixed players having the name of another player when rejoining after losing connection
 - Fixed an issue where a player could die immediately after respawning
+- Fixed rare sketchy animations server-side on Spearhead and Breakthrough
 - Fixed sharking issues with ladders
 - Fixed score from previous map glitch
 - Fixed shaky camera when the ground entity is moving
@@ -391,6 +393,7 @@ Enable this feature with `set sv_netoptimize 2`.
 - Fix to prevent throwing a projectile and going into spectator to kill anyone
 - Fix for `sv_fps` (tickrate), higher values won't cause animation issues anymore
 - Grenades with 1 ammo can now be picked up
+- Large vote configurations will no longer cause clients to disconnect (the hard limit is 1MB)
 - Prevent crashing when the last weapon has no ammo and other weapons are inventory items
 - Prevent doors from getting blocked
 - Prevent empty weapons from being picked up by a sentient who already have the weapon
@@ -404,10 +407,12 @@ Enable this feature with `set sv_netoptimize 2`.
 
 #### Server-side
 
+- Allow rotating on noclip mode when dead
 - Better logging of clients and chat
 - Don't set `g_shownpc` to true automatically
 - Improved portable turret placement
 - Increased the DM message limit in multiplayer
+- Nocliping when dead no longer makes the player animation sketchy
 
 ## Planned features
 

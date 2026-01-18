@@ -20,34 +20,26 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 
-// sv_gamespy.h -- Game-specific server GameSpy code
+#include "../corepp/listener.h"
 
-#pragma once
+class VoteOptions;
 
-#include "q_gamespy.h"
+class VoteUpload : public Listener
+{
+public:
+    CLASS_PROTOTYPE(VoteUpload);
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+public:
+    VoteUpload();
+    VoteUpload(int clientNum);
 
-extern const char* GS_GetGameKey(unsigned int index);
-extern unsigned int GS_GetGameID(unsigned int index);
-extern const char* GS_GetGameName(unsigned int index);
-extern const char* GS_GetCurrentGameKey();
-extern unsigned int GS_GetCurrentGameID();
-extern const char* GS_GetCurrentGameName();
+    void StartSending(const VoteOptions& options);
 
-void SV_CreateGamespyChallenge(char* challenge);
-void SV_GamespyAuthorize(netadr_t from, const char* response);
-void SV_GamespyHeartbeat();
-void SV_ProcessGamespyQueries();
-qboolean SV_InitGamespy();
-void SV_ShutdownGamespy();
-void SV_RestartGamespy();
-void SV_RestartGamespy_f();
-void SV_TryRestartGamespy();
-void SV_GamespyClientDisconnect(int gamespyId);
+    bool ClientThink();
 
-#ifdef __cplusplus
-}
-#endif
+private:
+    int clientNum;
+    int bufferLength;
+    const char *bufferToSend;
+    size_t offset;
+};

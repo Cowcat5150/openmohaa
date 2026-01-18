@@ -501,7 +501,8 @@ void SV_ApplyFirstConfigTweaks();
 //
 // sv_client.c
 //
-challenge_t* FindChallenge(netadr_t from, qboolean connecting); 
+challenge_t* FindChallenge(netadr_t from, qboolean connecting);
+challenge_t* FindExistingChallenge(netadr_t from);
 void SV_GetChallenge(netadr_t from);
 
 void SV_DirectConnect( netadr_t from );
@@ -523,6 +524,9 @@ int SV_SendDownloadMessages(void);
 int SV_SendQueuedMessages(void);
 
 void SV_KickClientForReason(client_t *cl, const char *reason);
+
+unsigned int SV_Client_GetNumPendingCommands(client_t *cl);
+unsigned int SV_Client_GetMaxPendingCommands(client_t *cl);
 
 
 //
