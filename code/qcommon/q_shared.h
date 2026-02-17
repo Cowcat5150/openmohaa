@@ -80,7 +80,7 @@ extern "C" {
  #define HOMEPATH_NAME_UNIX_LEGACY	".openmohaa"
  #define HOMEPATH_NAME				"openmohaa"
 
-#define CONFIG_PREFIX			"opmconfig"
+#define CONFIG_PREFIX			"omconfig"
 
 #define CLIENT_WINDOW_TITLE		PRODUCT_NAME
 #define CLIENT_WINDOW_MIN_TITLE PRODUCT_NAME
@@ -179,6 +179,7 @@ extern "C" {
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <time.h>
 #include <ctype.h>
