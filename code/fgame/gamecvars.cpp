@@ -297,6 +297,8 @@ cvar_t *g_bot_manualmove;
 cvar_t *g_rankedserver;
 cvar_t *g_spectatefollow_firstperson;
 
+cvar_t *g_playeranim_legs_continous;
+
 cvar_t *cl_running;
 
 // Whether or instant messages are allowed
@@ -313,6 +315,9 @@ cvar_t *g_teambalance;
 
 // Whether or not to use Legacy Navigation
 cvar_t *g_navigation_legacy;
+
+// Reopen door if blocked
+cvar_t *g_door_reopen_blocked;
 
 void CVAR_Init(void)
 {
@@ -692,6 +697,8 @@ void CVAR_Init(void)
     g_rankedserver               = gi.Cvar_Get("g_rankedserver", "0", 0);
     g_spectatefollow_firstperson = gi.Cvar_Get("g_spectatefollow_firstperson", "0", 0);
 
+    g_playeranim_legs_continous =  gi.Cvar_Get("g_playeranim_legs_continous", "1", 0);
+
     if (maxclients->integer + sv_maxbots->integer > MAX_CLIENTS) {
         unsigned int lowered;
 
@@ -713,6 +720,8 @@ void CVAR_Init(void)
     g_teambalance = gi.Cvar_Get("g_teambalance", "0", 0);
 
     g_navigation_legacy = gi.Cvar_Get("g_navigation_legacy", "0", CVAR_LATCH);
+
+    g_door_reopen_blocked = gi.Cvar_Get("g_door_reopen_blocked", "1", 0);
 
     cl_running = gi.Cvar_Get("cl_running", "", 0);
 }
